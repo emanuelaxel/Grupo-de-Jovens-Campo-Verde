@@ -16,7 +16,7 @@ import { Page, Role } from './types';
 
 const pagePermissions: { [key in Page]?: Role[] } = {
     'Finanças': ['Líder', 'Pastor', 'Tesoureiro'],
-    'Permissões': ['Líder', 'Pastor', 'Regente'],
+    'Permissões': ['Líder', 'Pastor', 'Regente', 'Tesoureiro'],
     'Membros': ['Líder', 'Pastor', 'Regente', 'Tesoureiro'],
 };
 
@@ -68,7 +68,7 @@ const App: React.FC = () => {
             case 'Dashboard':
                 return <Dashboard data={appData.dashboard} currentUserRole={currentUserRole} />;
             case 'Eventos':
-                return <Events initialEvents={appData.events} />;
+                return <Events initialEvents={appData.events} currentUserRole={currentUserRole} />;
             case 'Estudos':
                 return <Studies initialStudies={appData.studies} currentUserRole={currentUserRole} />;
             case 'Membros':

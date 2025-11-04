@@ -85,8 +85,8 @@ interface MembersPageProps {
 
 const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
   const [members, setMembers] = useState<Member[]>(data.members);
-  const canViewPersonalData = currentUserRole === 'Líder' || currentUserRole === 'Pastor' || currentUserRole === 'Regente';
-  const canManageMembers = currentUserRole === 'Líder' || currentUserRole === 'Pastor' || currentUserRole === 'Regente';
+  const canViewPersonalData = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
+  const canManageMembers = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
 
   const handleRoleChange = (memberId: number, newRole: Role) => {
     setMembers(currentMembers =>

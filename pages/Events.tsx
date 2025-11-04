@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
-import { Event } from '../types';
-import { ClockIcon, LocationMarkerIcon, UsersIcon, CheckIcon, PlusIcon } from '../components/Icons';
+import { Event, Role } from '../types';
+import { ClockIcon, LocationMarkerIcon, UsersIcon, CheckIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import EventModal from '../components/EventModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 
 interface EventsProps {
   initialEvents: Event[];
+  currentUserRole: Role;
 }
 
-const Events: React.FC<EventsProps> = ({ initialEvents }) => {
+const Events: React.FC<EventsProps> = ({ initialEvents, currentUserRole }) => {
   const [events, setEvents] = useState(initialEvents);
   const [confirmedEvents, setConfirmedEvents] = useState<Set<number>>(new Set());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+  const canManageEvents = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
   
   const handleToggleConfirmation = (eventId: number) => {
     const newConfirmedSet = new Set(confirmedEvents);
@@ -58,6 +61,12 @@ const Events: React.FC<EventsProps> = ({ initialEvents }) => {
     setSelectedEvent(null);
   };
 
+  const handleDeleteEvent = (eventId: number) => {
+    if (window.confirm('Tem certeza que deseja excluir este evento? Esta ação não pode ser desfeita.')) {
+        setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -70,11 +79,13 @@ const Events: React.FC<EventsProps> = ({ initialEvents }) => {
           <h1 className="text-2xl font-bold text-brand-gray-800">Próximos Eventos</h1>
           <p className="text-brand-gray-600 mt-1">Veja e gerencie os eventos do grupo</p>
         </div>
-        <button 
-            onClick={() => setIsCreateModalOpen(true)}
-            className="mt-4 md:mt-0 bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center gap-2">
-          <PlusIcon className="w-5 h-5" /> Novo Evento
-        </button>
+        {canManageEvents && (
+            <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="mt-4 md:mt-0 bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center gap-2">
+              <PlusIcon className="w-5 h-5" /> Novo Evento
+            </button>
+        )}
       </div>
       
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-3 rounded-xl border border-brand-gray-200/50">
@@ -93,7 +104,16 @@ const Events: React.FC<EventsProps> = ({ initialEvents }) => {
         {events.map((event) => {
           const isConfirmed = confirmedEvents.has(event.id);
           return (
-            <Card key={event.id} className="p-0 flex flex-col overflow-hidden">
+            <Card key={event.id} className="p-0 flex flex-col overflow-hidden relative">
+                {canManageEvents && (
+                    <button
+                        onClick={() => handleDeleteEvent(event.id)}
+                        className="absolute top-4 right-4 bg-white/70 backdrop-blur-sm text-red-600 p-2 rounded-full hover:bg-red-100 transition-colors z-10"
+                        aria-label="Excluir evento"
+                    >
+                        <TrashIcon className="w-5 h-5" />
+                    </button>
+                )}
                 {event.bannerUrl && (
                     <img src={event.bannerUrl} alt={event.title} className="w-full h-32 object-cover"/>
                 )}

@@ -130,7 +130,7 @@ const Permissions: React.FC<{ data: PermissionsPageData; currentUserRole: Role }
     const [members, setMembers] = useState<IndividualPermissionMember[]>(data.individualPermissionMembers);
     const [modalState, setModalState] = useState<{isOpen: boolean; member: IndividualPermissionMember | null}>({isOpen: false, member: null});
     
-    const canManage = currentUserRole === 'Líder' || currentUserRole === 'Pastor' || currentUserRole === 'Regente';
+    const canManage = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
 
     const handleOpenModal = (member: IndividualPermissionMember) => {
         if (canManage) {

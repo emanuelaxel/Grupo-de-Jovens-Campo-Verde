@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import { Study, Role, Comment } from '../types';
-import { PlusIcon, BookOpenIcon, ClockIcon, UserIcon, DownloadIcon, PencilIcon, ChatBubbleLeftIcon } from '../components/Icons';
+import { PlusIcon, BookOpenIcon, ClockIcon, UserIcon, DownloadIcon, PencilIcon, ChatBubbleLeftIcon, TrashIcon } from '../components/Icons';
 import StudyModal from '../components/StudyModal';
 import StudyDetailsModal from '../components/StudyDetailsModal';
 
@@ -35,6 +35,12 @@ const Studies: React.FC<StudiesProps> = ({ initialStudies, currentUserRole }) =>
     }
     setIsEditModalOpen(false);
     setSelectedStudy(null);
+  };
+
+  const handleDeleteStudy = (studyId: number) => {
+    if (window.confirm('Tem certeza que deseja excluir este estudo? Todos os dados, incluindo lições e comentários, serão perdidos permanentemente.')) {
+        setStudies(prevStudies => prevStudies.filter(study => study.id !== studyId));
+    }
   };
 
   const handleAddComment = (studyId: number, commentText: string) => {
@@ -157,9 +163,14 @@ const Studies: React.FC<StudiesProps> = ({ initialStudies, currentUserRole }) =>
                       Ver Detalhes
                   </button>
                   {canManageStudies && (
-                      <button onClick={() => handleOpenEditModal(study)} className="bg-white text-brand-gray-800 font-semibold py-1.5 px-3 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors text-xs flex items-center justify-center gap-1">
-                          <PencilIcon className="w-3 h-3" /> Editar
-                      </button>
+                      <>
+                        <button onClick={() => handleOpenEditModal(study)} className="bg-white text-brand-gray-800 font-semibold py-1.5 px-3 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors text-xs flex items-center justify-center gap-1">
+                            <PencilIcon className="w-3 h-3" /> Editar
+                        </button>
+                        <button onClick={() => handleDeleteStudy(study.id)} className="bg-white text-red-600 font-semibold py-1.5 px-3 rounded-lg border border-brand-gray-300 hover:bg-red-50 transition-colors text-xs flex items-center justify-center gap-1">
+                            <TrashIcon className="w-3 h-3" /> Excluir
+                        </button>
+                      </>
                   )}
                   {study.materialUrl && (
                       <a href={study.materialUrl} target="_blank" rel="noopener noreferrer" className="bg-brand-gray-900 text-white font-semibold py-1.5 px-3 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center justify-center gap-1 text-xs">

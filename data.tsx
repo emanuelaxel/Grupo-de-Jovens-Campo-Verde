@@ -77,9 +77,9 @@ export const appData: AppData = {
                 { name: 'Ver Estudos', leader: true, pastor: true, regente: true, treasurer: true, member: true },
             ]},
             { id: 'management', name: 'Gerenciamento', icon: <PencilIcon className="w-6 h-6 text-brand-gray-500" />, permissions: [
-                { name: 'Gerenciar Eventos', leader: true, pastor: true, regente: true, treasurer: false, member: false },
-                { name: 'Gerenciar Estudos', leader: true, pastor: true, regente: false, treasurer: false, member: false },
-                { name: 'Gerenciar Membros', leader: true, pastor: true, regente: false, treasurer: false, member: false },
+                { name: 'Gerenciar Eventos', leader: true, pastor: true, regente: true, treasurer: true, member: false },
+                { name: 'Gerenciar Estudos', leader: true, pastor: true, regente: false, treasurer: true, member: false },
+                { name: 'Gerenciar Membros', leader: true, pastor: true, regente: false, treasurer: true, member: false },
                 { name: 'Gerenciar Finanças', leader: true, pastor: true, regente: false, treasurer: true, member: false },
             ]},
         ],
