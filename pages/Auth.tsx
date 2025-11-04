@@ -25,11 +25,25 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check hardcoded users first
     if ((loginEmail === 'lider@email.com' && loginPassword === '123456') || (loginEmail === 'emanoelaxl@hotmail.com' && loginPassword === 'axel12345@')) {
       setLoginError('');
       onLoginSuccess(loginEmail);
+      return;
+    }
+
+    // Check users from localStorage
+    const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
+    const foundUser = storedUsers.find(
+      (user: any) => user.email === loginEmail && user.password === loginPassword
+    );
+
+    if (foundUser) {
+        setLoginError('');
+        onLoginSuccess(loginEmail);
     } else {
-      setLoginError('E-mail ou senha inválidos.');
+        setLoginError('E-mail ou senha inválidos.');
     }
   };
   

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Card from '../components/Card';
 import { Member, MemberPageData, Role } from '../types';
 import { UsersIcon, SearchIcon, ChevronDownIcon, PlusIcon, MailIcon, PhoneIcon, CalendarIcon, BookOpenIcon, ShieldIcon } from '../components/Icons';
+import AddMemberModal from '../components/AddMemberModal';
 
 const roleColors: { [key: string]: string } = {
   'Líder': 'bg-purple-100 text-purple-700',
@@ -85,6 +86,7 @@ interface MembersPageProps {
 
 const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
   const [members, setMembers] = useState<Member[]>(data.members);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const canViewPersonalData = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
   const canManageMembers = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
 
@@ -96,14 +98,60 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
     );
   };
 
+  const handleAddMember = (memberData: any) => {
+    const getInitials = (name: string) => {
+        const names = name.split(' ');
+        if (names.length > 1) {
+            return `${names[0][0]}${names[names.length - 1][0]}`;
+        }
+        return name.substring(0, 2);
+    };
+
+    const avatarColors = [
+        'bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 
+        'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
+    ];
+    const randomColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
+
+    const newMember: Member = {
+        id: Date.now(),
+        name: memberData.name,
+        initials: getInitials(memberData.name).toUpperCase(),
+        avatarColor: randomColor,
+        role: memberData.role,
+        email: memberData.email,
+        phone: memberData.phone,
+        joinDate: new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' }),
+        eventsAttended: 0,
+        studiesCompleted: 0
+    };
+
+    setMembers(prevMembers => [newMember, ...prevMembers]);
+
+    // Save user credentials for login
+    const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
+    const newUserCredentials = {
+        email: memberData.email,
+        password: memberData.password,
+        role: memberData.role
+    };
+    storedUsers.push(newUserCredentials);
+    localStorage.setItem('appUsers', JSON.stringify(storedUsers));
+    
+    setIsAddModalOpen(false);
+  };
+
   return (
     <div className="space-y-6">
+      {isAddModalOpen && <AddMemberModal onClose={() => setIsAddModalOpen(false)} onSave={handleAddMember} />}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-brand-gray-900">Membros do Grupo</h1>
           <p className="text-brand-gray-600 mt-1">Gerencie os membros e suas informações</p>
         </div>
-        <button className="mt-4 md:mt-0 bg-brand-gray-900 text-white font-semibold py-2.5 px-5 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center gap-2">
+        <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="mt-4 md:mt-0 bg-brand-gray-900 text-white font-semibold py-2.5 px-5 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center gap-2">
           <PlusIcon className="w-5 h-5" /> Adicionar Membro
         </button>
       </div>

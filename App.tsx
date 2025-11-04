@@ -27,16 +27,32 @@ const App: React.FC = () => {
 
     // Simulate role selection on login from Auth.tsx
     useEffect(() => {
-        // A simple way to check which user is logged in to assign a role.
-        // In a real app, this would come from an API.
         const storedEmail = localStorage.getItem('userEmail');
+        if (!storedEmail) {
+            setCurrentUserRole('Membro'); // Default if no one is logged in
+            return;
+        }
+
+        // Hardcoded users
         if (storedEmail === 'lider@email.com') {
             setCurrentUserRole('Líder');
-        } else if (storedEmail === 'emanoelaxl@hotmail.com') {
-            setCurrentUserRole('Pastor'); // Example role
-        } else {
-             setCurrentUserRole('Membro');
+            return;
+        } 
+        if (storedEmail === 'emanoelaxl@hotmail.com') {
+            setCurrentUserRole('Pastor');
+            return;
         }
+        
+        // Check dynamic users from localStorage
+        const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
+        const currentUser = storedUsers.find((user: any) => user.email === storedEmail);
+        
+        if (currentUser) {
+            setCurrentUserRole(currentUser.role);
+        } else {
+            setCurrentUserRole('Membro'); // Fallback to default role
+        }
+
     }, [isAuthenticated]);
 
 
