@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import { Member, MemberPageData, Role } from '../types';
 import { UsersIcon, SearchIcon, ChevronDownIcon, PlusIcon, MailIcon, PhoneIcon, CalendarIcon, BookOpenIcon, ShieldIcon, PencilIcon } from '../components/Icons';
@@ -94,7 +94,22 @@ interface MembersPageProps {
 }
 
 const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
-  const [members, setMembers] = useState<Member[]>(data.members);
+  const [members, setMembers] = useState<Member[]>(() => {
+    const savedMembers = localStorage.getItem('appMembers');
+    try {
+        if (savedMembers) {
+            return JSON.parse(savedMembers);
+        }
+    } catch (error) {
+        console.error("Failed to parse members from localStorage", error);
+    }
+    return data.members;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('appMembers', JSON.stringify(members));
+  }, [members]);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
