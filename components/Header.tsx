@@ -1,16 +1,28 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Page } from '../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Page, Role } from '../types';
 import { BellIcon, ChevronDownIcon, SearchIcon, LogoutIcon } from './Icons';
 
 interface HeaderProps {
   page: Page;
   onLogout: () => void;
+  currentUserRole: Role;
 }
 
-const Header: React.FC<HeaderProps> = ({ page, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ page, onLogout, currentUserRole }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const currentUser = useMemo(() => {
+    const email = localStorage.getItem('userEmail');
+    if (!email) return { name: 'Usuário', initials: 'U' };
+
+    const namePart = email.split('@')[0];
+    const name = namePart.charAt(0).toUpperCase() + namePart.slice(1).replace(/[^a-zA-Z0-9]/g, '');
+    const initials = (name[0] || '').toUpperCase();
+    
+    return { name, initials };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -43,11 +55,11 @@ const Header: React.FC<HeaderProps> = ({ page, onLogout }) => {
           <div className="relative" ref={dropdownRef}>
             <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-3 cursor-pointer">
               <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-br from-purple-500 to-indigo-600">
-                AS
+                {currentUser.initials}
               </div>
               <div>
-                <p className="font-semibold text-sm text-brand-gray-800">Ana Silva</p>
-                <p className="text-xs text-brand-gray-500">Líder</p>
+                <p className="font-semibold text-sm text-brand-gray-800">{currentUser.name}</p>
+                <p className="text-xs text-brand-gray-500">{currentUserRole}</p>
               </div>
               <ChevronDownIcon className={`w-5 h-5 text-brand-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>

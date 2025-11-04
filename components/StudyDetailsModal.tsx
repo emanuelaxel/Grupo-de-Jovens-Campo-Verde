@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Study, Comment } from '../types';
 import { BookOpenIcon, ClockIcon, UserIcon, DownloadIcon, FileTextIcon } from './Icons';
 
@@ -10,6 +10,17 @@ interface StudyDetailsModalProps {
 
 const StudyDetailsModal: React.FC<StudyDetailsModalProps> = ({ study, onClose, onAddComment }) => {
     const [newComment, setNewComment] = useState('');
+
+    const currentUser = useMemo(() => {
+        const email = localStorage.getItem('userEmail');
+        if (!email) return { name: 'Usuário', initials: 'U' };
+
+        const namePart = email.split('@')[0];
+        const name = namePart.charAt(0).toUpperCase() + namePart.slice(1).replace(/[^a-zA-Z0-9]/g, '');
+        const initials = (name[0] || '').toUpperCase();
+        
+        return { name, initials };
+    }, []);
 
     const handleSubmitComment = (e: React.FormEvent) => {
         e.preventDefault();
@@ -89,7 +100,7 @@ const StudyDetailsModal: React.FC<StudyDetailsModalProps> = ({ study, onClose, o
                         </div>
                         <form onSubmit={handleSubmitComment} className="mt-6 flex items-start gap-3">
                              <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-purple-500 to-indigo-600">
-                                AS
+                                {currentUser.initials}
                             </div>
                             <div className="flex-1">
                                 <textarea

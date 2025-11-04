@@ -94,7 +94,7 @@ const App: React.FC = () => {
         <div className="flex h-screen bg-brand-gray-100 font-sans">
             <Sidebar currentPage={page} setPage={setPage} onLogout={handleLogout} />
             <main className="flex-1 overflow-y-auto">
-                <Header page={page} onLogout={handleLogout} />
+                <Header page={page} onLogout={handleLogout} currentUserRole={currentUserRole} />
                 <div className="p-8">
                     {renderPage()}
                 </div>

@@ -38,10 +38,16 @@ const Studies: React.FC<StudiesProps> = ({ initialStudies, currentUserRole }) =>
   };
 
   const handleAddComment = (studyId: number, commentText: string) => {
+    const email = localStorage.getItem('userEmail') || 'convidado@email.com';
+    const namePart = email.split('@')[0];
+    const name = namePart.charAt(0).toUpperCase() + namePart.slice(1).replace(/[^a-zA-Z0-9]/g, '');
+    const initials = (name[0] || 'C').toUpperCase();
+
+
     const newComment: Comment = {
         id: Date.now(),
-        authorName: 'Ana Silva', // In a real app, this would be the current user
-        authorInitials: 'AS',
+        authorName: name,
+        authorInitials: initials,
         authorAvatarColor: 'bg-gradient-to-br from-purple-500 to-indigo-600',
         text: commentText,
         timestamp: 'Agora mesmo'
