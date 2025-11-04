@@ -154,16 +154,11 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
           </div>
         </form>
         
-        <div className="text-center text-sm text-brand-gray-500">
+        <div className="text-center text-sm text-brand-gray-500 pt-4 border-t border-brand-gray-200">
             Não tem uma conta?{' '}
             <button onClick={() => setAuthMode('register')} className="font-medium text-brand-purple hover:text-brand-purple-dark">
                 Cadastre-se
             </button>
-        </div>
-
-        <div className="text-center text-xs text-brand-gray-500 pt-4 border-t border-brand-gray-200">
-            <p>Use <span className="font-semibold">lider@email.com</span> / <span className="font-semibold">123456</span> para testar.</p>
-            <p>Ou <span className="font-semibold">emanoelaxl@hotmail.com</span> / <span className="font-semibold">axel12345@</span> para acesso completo.</p>
         </div>
       </>
     );
