@@ -74,14 +74,16 @@ export interface Member {
     studiesCompleted: number;
 }
 
+export type ResourceType = 'file' | 'video' | 'audio' | 'link' | 'gallery' | 'playlist';
+
 export interface Resource {
     id: number;
     title: string;
     description: string;
     category: string;
-    type: 'file' | 'video' | 'audio' | 'link';
+    type: ResourceType;
     icon: React.ReactNode;
-    action: 'Download' | 'Assistir' | 'Ouvir' | 'Acessar';
+    action: 'Download' | 'Assistir' | 'Ouvir' | 'Acessar' | 'Ver';
     details?: string;
     url: string;
 }

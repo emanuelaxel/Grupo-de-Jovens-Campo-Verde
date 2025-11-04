@@ -74,7 +74,7 @@ const App: React.FC = () => {
             case 'Membros':
                 return <Members data={appData.membersPage} currentUserRole={currentUserRole} />;
             case 'Recursos':
-                return <Resources resources={appData.resources} />;
+                return <Resources initialResources={appData.resources} currentUserRole={currentUserRole} />;
             case 'Finanças':
                 return <Finances data={appData.finances} />;
             case 'Permissões':

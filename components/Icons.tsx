@@ -117,3 +117,9 @@ export const UsersGroupIcon: React.FC<IconProps> = ({ className }) => (
 export const MegaphoneIcon: React.FC<IconProps> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.136A1.76 1.76 0 015.882 11H11m0-5.118A2 2 0 0113 3h2a2 2 0 012 2v10a2 2 0 01-2 2h-2a2 2 0 01-2-1.882z"></path></svg>
 );
+export const ImageIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+);
+export const MusicNoteIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l10-3v13m-10 0a3 3 0 11-6 0 3 3 0 016 0zm10-13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+);
