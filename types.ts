@@ -72,6 +72,9 @@ export interface Member {
     joinDate: string;
     eventsAttended: number;
     studiesCompleted: number;
+    dob?: string;
+    address?: string;
+    baptismDate?: string;
 }
 
 export type ResourceType = 'file' | 'video' | 'audio' | 'link' | 'gallery' | 'playlist';

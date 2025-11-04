@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import { Member, MemberPageData, Role } from '../types';
-import { UsersIcon, SearchIcon, ChevronDownIcon, PlusIcon, MailIcon, PhoneIcon, CalendarIcon, BookOpenIcon, ShieldIcon } from '../components/Icons';
+import { UsersIcon, SearchIcon, ChevronDownIcon, PlusIcon, MailIcon, PhoneIcon, CalendarIcon, BookOpenIcon, ShieldIcon, PencilIcon } from '../components/Icons';
 import AddMemberModal from '../components/AddMemberModal';
+import EditMemberModal from '../components/EditMemberModal';
 
 const roleColors: { [key: string]: string } = {
   'Líder': 'bg-purple-100 text-purple-700',
@@ -17,9 +18,10 @@ interface MemberCardProps {
   canViewPersonalData: boolean;
   canManageMembers: boolean;
   onRoleChange: (memberId: number, newRole: Role) => void;
+  onEdit: (member: Member) => void;
 }
 
-const MemberCard: React.FC<MemberCardProps> = ({ member, canViewPersonalData, canManageMembers, onRoleChange }) => (
+const MemberCard: React.FC<MemberCardProps> = ({ member, canViewPersonalData, canManageMembers, onRoleChange, onEdit }) => (
   <Card className="p-5 flex flex-col">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -30,23 +32,30 @@ const MemberCard: React.FC<MemberCardProps> = ({ member, canViewPersonalData, ca
           <h3 className="font-bold text-lg text-brand-gray-800">{member.name}</h3>
         </div>
       </div>
-       {canManageMembers ? (
-          <select
-              value={member.role}
-              onChange={(e) => onRoleChange(member.id, e.target.value as Role)}
-              className={`text-xs font-semibold px-3 py-1 rounded-full border-2 border-transparent appearance-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition-all ${roleColors[member.role]}`}
-          >
-              <option value="Líder">Líder</option>
-              <option value="Pastor">Pastor</option>
-              <option value="Regente">Regente</option>
-              <option value="Tesoureiro">Tesoureiro</option>
-              <option value="Membro">Membro</option>
-          </select>
-      ) : (
-        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${roleColors[member.role]}`}>
-          {member.role}
-        </span>
-      )}
+       <div className="flex items-center gap-2">
+            {canManageMembers && (
+                <button onClick={() => onEdit(member)} className="p-2 text-brand-gray-500 hover:bg-brand-gray-100 rounded-full">
+                    <PencilIcon className="w-4 h-4" />
+                </button>
+            )}
+           {canManageMembers ? (
+              <select
+                  value={member.role}
+                  onChange={(e) => onRoleChange(member.id, e.target.value as Role)}
+                  className={`text-xs font-semibold px-3 py-1 rounded-full border-2 border-transparent appearance-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition-all ${roleColors[member.role]}`}
+              >
+                  <option value="Líder">Líder</option>
+                  <option value="Pastor">Pastor</option>
+                  <option value="Regente">Regente</option>
+                  <option value="Tesoureiro">Tesoureiro</option>
+                  <option value="Membro">Membro</option>
+              </select>
+          ) : (
+            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${roleColors[member.role]}`}>
+              {member.role}
+            </span>
+          )}
+       </div>
     </div>
 
     <div className="my-5 space-y-2 text-sm text-brand-gray-600">
@@ -87,8 +96,23 @@ interface MembersPageProps {
 const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
   const [members, setMembers] = useState<Member[]>(data.members);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+
   const canViewPersonalData = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
   const canManageMembers = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
+
+    const handleOpenEditModal = (member: Member) => {
+        setEditingMember(member);
+        setIsEditModalOpen(true);
+    };
+
+    const handleCloseModals = () => {
+        setIsAddModalOpen(false);
+        setIsEditModalOpen(false);
+        setEditingMember(null);
+    };
+
 
   const handleRoleChange = (memberId: number, newRole: Role) => {
     setMembers(currentMembers =>
@@ -123,7 +147,10 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
         phone: memberData.phone,
         joinDate: new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' }),
         eventsAttended: 0,
-        studiesCompleted: 0
+        studiesCompleted: 0,
+        dob: memberData.dob,
+        address: memberData.address,
+        baptismDate: memberData.baptismDate,
     };
 
     setMembers(prevMembers => [newMember, ...prevMembers]);
@@ -138,12 +165,44 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
     storedUsers.push(newUserCredentials);
     localStorage.setItem('appUsers', JSON.stringify(storedUsers));
     
-    setIsAddModalOpen(false);
+    handleCloseModals();
   };
+  
+    const handleUpdateMember = (updatedData: any) => {
+        if (!editingMember) return;
+
+        setMembers(prevMembers =>
+            prevMembers.map(m => (m.id === editingMember.id ? { ...m, ...updatedData } : m))
+        );
+
+        // Update user credentials in localStorage
+        const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
+        const userIndex = storedUsers.findIndex((user: any) => user.email === editingMember.email);
+        
+        if (userIndex !== -1) {
+            storedUsers[userIndex].email = updatedData.email;
+            storedUsers[userIndex].role = updatedData.role;
+            // Only update password if a new one was provided
+            if (updatedData.password) {
+                storedUsers[userIndex].password = updatedData.password;
+            }
+            localStorage.setItem('appUsers', JSON.stringify(storedUsers));
+        }
+
+        handleCloseModals();
+    };
+
 
   return (
     <div className="space-y-6">
-      {isAddModalOpen && <AddMemberModal onClose={() => setIsAddModalOpen(false)} onSave={handleAddMember} />}
+      {isAddModalOpen && <AddMemberModal onClose={handleCloseModals} onSave={handleAddMember} />}
+      {isEditModalOpen && editingMember && (
+          <EditMemberModal 
+              member={editingMember}
+              onClose={handleCloseModals}
+              onSave={handleUpdateMember}
+            />
+      )}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-brand-gray-900">Membros do Grupo</h1>
@@ -195,7 +254,7 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {members.map(member => (
-          <MemberCard key={member.id} member={member} canViewPersonalData={canViewPersonalData} canManageMembers={canManageMembers} onRoleChange={handleRoleChange} />
+          <MemberCard key={member.id} member={member} canViewPersonalData={canViewPersonalData} canManageMembers={canManageMembers} onRoleChange={handleRoleChange} onEdit={handleOpenEditModal} />
         ))}
       </div>
 
