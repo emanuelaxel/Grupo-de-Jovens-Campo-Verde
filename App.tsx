@@ -19,18 +19,17 @@ const pagePermissions: { [key in Page]?: Role[] } = {
     'Membros': ['Líder', 'Pastor', 'Regente', 'Tesoureiro'],
 };
 
+// Perfil de usuário estático para demonstração, já que a autenticação foi removida.
+const DEMO_USER_ROLE: Role = 'Líder';
+const currentUserProfile = appData.membersPage.members.find(m => m.role === DEMO_USER_ROLE) || appData.membersPage.members[0];
+
+
 const App: React.FC = () => {
     const [page, setPage] = useState<Page>('Dashboard');
-    
-    // Reverted to a static user, assuming the first 'Líder' from mock data.
-    const [currentUserProfile] = useState<Member>(
-        appData.membersPage.members.find(m => m.role === 'Líder') || appData.membersPage.members[0]
-    );
 
+    // Função de logout simulada, pois não há sessão real.
     const handleLogout = () => {
-        // In a real app, this would clear session. Here we can just reset to dashboard.
-        console.log("Logout triggered");
-        setPage('Dashboard');
+        alert("A funcionalidade de logout foi desativada, pois não há um usuário logado.");
     };
 
     const currentUserRole = currentUserProfile?.role || 'Membro';
@@ -69,7 +68,7 @@ const App: React.FC = () => {
                 return <Dashboard data={appData.dashboard} currentUserRole={currentUserRole} />;
         }
     };
-
+    
     return (
         <div className="flex h-screen bg-brand-gray-100 font-sans">
             <Sidebar currentPage={page} setPage={setPage} onLogout={handleLogout} />

@@ -10,7 +10,9 @@ interface ResourceModalProps {
     onSave: (resources: Omit<Resource, 'id'>[]) => void;
 }
 
-const resourceTypesConfig = {
+// FIX: Added an explicit type for resourceTypesConfig to make `multiFile` and `fileType` optional,
+// which resolves type errors when accessing these properties on configs that don't have them (like 'link').
+const resourceTypesConfig: Record<string, { title: string; icon: React.ReactNode; multiFile?: boolean; fileType?: string; }> = {
     gallery: { title: 'Galeria de Fotos', icon: <ImageIcon className="w-8 h-8 text-indigo-500" />, multiFile: true, fileType: 'image/*' },
     audio: { title: 'Arquivo de Áudio', icon: <PlayIcon className="w-8 h-8 text-teal-500" />, multiFile: false, fileType: 'audio/*' },
     file: { title: 'Documento', icon: <FileTextIcon className="w-8 h-8 text-blue-500" />, multiFile: false, fileType: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx' },

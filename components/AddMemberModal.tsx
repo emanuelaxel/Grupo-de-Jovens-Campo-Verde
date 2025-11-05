@@ -9,7 +9,6 @@ interface AddMemberModalProps {
 const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onSave }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [role, setRole] = useState<Role>('Membro');
     const [dob, setDob] = useState('');
     const [phone, setPhone] = useState('');
@@ -19,7 +18,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onSave }) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave({
-            name, email, password, role, dob, phone, address, baptismDate
+            name, email, role, dob, phone, address, baptismDate
         });
     };
 
@@ -28,14 +27,13 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onSave }) => {
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="p-6 border-b border-brand-gray-200">
                     <h2 className="text-xl font-bold text-brand-gray-900">Adicionar Novo Membro</h2>
-                    <p className="text-sm text-brand-gray-600">Preencha os detalhes para criar uma nova conta de membro.</p>
+                    <p className="text-sm text-brand-gray-600">Preencha os detalhes para criar um novo membro.</p>
                 </div>
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input placeholder="Nome completo" required className="input-field" type="text" value={name} onChange={e => setName(e.target.value)} />
                         <input placeholder="E-mail" required className="input-field" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-                        <input placeholder="Senha" required className="input-field" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-                        <select value={role} onChange={e => setRole(e.target.value as Role)} required className="input-field">
+                        <select value={role} onChange={e => setRole(e.target.value as Role)} required className="input-field md:col-span-2">
                             <option value="Membro">Membro</option>
                             <option value="Líder">Líder</option>
                             <option value="Pastor">Pastor</option>

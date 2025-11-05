@@ -119,7 +119,7 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
     setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m));
   };
 
-  const handleAddMember = (memberData: any) => {
+  const handleAddMember = (memberData: Omit<Member, 'id' | 'initials' | 'avatarColor' | 'joinDate' | 'eventsAttended' | 'studiesCompleted'>) => {
     const getInitials = (name: string) => {
         const names = name.split(' ');
         if (names.length > 1) {
@@ -133,18 +133,12 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
 
     const newMember: Member = {
         id: Date.now(),
-        name: memberData.name,
+        ...memberData,
         initials: getInitials(memberData.name).toUpperCase(),
         avatarColor: randomColor,
-        role: memberData.role,
-        email: memberData.email,
-        phone: memberData.phone,
-        joinDate: new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' }),
+        joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
         eventsAttended: 0,
         studiesCompleted: 0,
-        dob: memberData.dob,
-        address: memberData.address,
-        baptismDate: memberData.baptismDate,
     };
     setMembers(prev => [newMember, ...prev]);
     handleCloseModals();
