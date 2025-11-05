@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -9,12 +9,9 @@ import Resources from './pages/Resources';
 import Finances from './pages/Finances';
 import Permissions from './pages/Permissions';
 import Polls from './pages/Polls';
-import Auth from './pages/Auth';
 import AccessDenied from './components/AccessDenied';
 import { appData } from './data';
 import { Page, Role, Member } from './types';
-import { supabase } from './supabaseClient';
-import type { Session } from '@supabase/supabase-js';
 
 const pagePermissions: { [key in Page]?: Role[] } = {
     'Finanças': ['Líder', 'Pastor', 'Tesoureiro'],
@@ -23,54 +20,16 @@ const pagePermissions: { [key in Page]?: Role[] } = {
 };
 
 const App: React.FC = () => {
-    const [session, setSession] = useState<Session | null>(null);
-    const [currentUserProfile, setCurrentUserProfile] = useState<Member | null>(null);
-    const [loading, setLoading] = useState(true);
     const [page, setPage] = useState<Page>('Dashboard');
+    
+    // Reverted to a static user, assuming the first 'Líder' from mock data.
+    const [currentUserProfile] = useState<Member>(
+        appData.membersPage.members.find(m => m.role === 'Líder') || appData.membersPage.members[0]
+    );
 
-    useEffect(() => {
-        const getSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setSession(session);
-            setLoading(false);
-        };
-
-        getSession();
-
-        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-        });
-
-        return () => {
-            authListener?.subscription.unsubscribe();
-        };
-    }, []);
-
-    useEffect(() => {
-        const fetchUserProfile = async () => {
-            if (session?.user) {
-                const { data, error } = await supabase
-                    .from('members')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .single();
-
-                if (data) {
-                    setCurrentUserProfile(data);
-                } else if (error) {
-                    console.error('Error fetching user profile:', error);
-                }
-            } else {
-                setCurrentUserProfile(null);
-            }
-        };
-
-        fetchUserProfile();
-    }, [session]);
-
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
+    const handleLogout = () => {
+        // In a real app, this would clear session. Here we can just reset to dashboard.
+        console.log("Logout triggered");
         setPage('Dashboard');
     };
 
@@ -110,14 +69,6 @@ const App: React.FC = () => {
                 return <Dashboard data={appData.dashboard} currentUserRole={currentUserRole} />;
         }
     };
-
-    if (loading) {
-        return <div className="flex h-screen items-center justify-center">Carregando...</div>;
-    }
-
-    if (!session) {
-        return <Auth />;
-    }
 
     return (
         <div className="flex h-screen bg-brand-gray-100 font-sans">

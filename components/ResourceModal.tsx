@@ -3,7 +3,6 @@ import { Resource, ResourceType } from '../types';
 import { 
     ImageIcon, MusicNoteIcon, PlayIcon, FileTextIcon, LinkIcon, UploadIcon
 } from './Icons';
-import { supabase } from '../supabaseClient';
 
 
 interface ResourceModalProps {
@@ -23,8 +22,7 @@ const resourceTypesConfig = {
 const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
     const [step, setStep] = useState(1);
     const [type, setType] = useState<ResourceType | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
-
+    
     // Form fields
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -43,35 +41,24 @@ const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
         setFiles(e.target.files);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!type || !config) return;
 
-        setIsUploading(true);
         let newResources: Omit<Resource, 'id'>[] = [];
 
         if (files && files.length > 0) {
             for (const file of Array.from(files)) {
-                // FIX: Cast `file` to `File` as TypeScript is not inferring its type correctly in this context.
                 const f = file as File;
-                const filePath = `public/${type}/${Date.now()}-${f.name}`;
-                const { error: uploadError } = await supabase.storage.from('resources').upload(filePath, f);
-
-                if (uploadError) {
-                    console.error("Upload error:", uploadError);
-                    alert(`Falha ao enviar o arquivo: ${f.name}`);
-                    continue; // Skip to next file
-                }
-
-                const { data: { publicUrl } } = supabase.storage.from('resources').getPublicUrl(filePath);
+                const fileUrl = URL.createObjectURL(f);
 
                 newResources.push({
                     title: files.length > 1 ? `${title} (${f.name})` : title,
                     description,
                     category,
                     type,
-                    url: publicUrl,
-                    icon: config.icon, // Icon is for display, not stored in DB
+                    url: fileUrl,
+                    icon: config.icon, // This will be set again in the parent component.
                     action: type === 'gallery' ? 'Ver' : type === 'audio' ? 'Ouvir' : 'Download',
                     details: `${(f.size / 1024).toFixed(2)} KB`
                 });
@@ -90,7 +77,6 @@ const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
         }
         
         onSave(newResources);
-        setIsUploading(false);
     };
 
     const renderStep1 = () => (
@@ -120,59 +106,61 @@ const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
                 <h2 className="text-xl font-bold text-brand-gray-900">Adicionar {config?.title}</h2>
                 <p className="text-sm text-brand-gray-600">Preencha os detalhes abaixo.</p>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div>
-                    <label className="label">Título</label>
-                    <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="input-field" />
-                </div>
-                <div>
-                    <label className="label">Descrição</label>
-                    <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={3} className="input-field"></textarea>
-                </div>
-                 <div>
-                    <label className="label">Categoria</label>
-                    <select value={category} onChange={e => setCategory(e.target.value)} required className="input-field">
-                        <option value="">Selecione uma categoria</option>
-                        <option>Estudos</option>
-                        <option>Louvor</option>
-                        <option>Mensagens</option>
-                        <option>Eventos</option>
-                        <option>Outros</option>
-                    </select>
-                </div>
-                
-                {config?.fileType ? (
-                     <div>
-                        <label className="label">Arquivo(s)</label>
-                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-brand-gray-300 border-dashed rounded-md">
-                            <div className="space-y-1 text-center">
-                                <UploadIcon className="mx-auto h-12 w-12 text-brand-gray-400" />
-                                <div className="flex text-sm text-brand-gray-600">
-                                    <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-brand-purple hover:text-brand-purple-dark">
-                                        <span>Carregar arquivo(s)</span>
-                                        <input id="file-upload" type="file" className="sr-only" multiple={config.multiFile} accept={config.fileType} onChange={handleFileChange} required />
-                                    </label>
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+                <div className="overflow-y-auto p-6 space-y-4">
+                    <div>
+                        <label className="label">Título</label>
+                        <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="input-field" />
+                    </div>
+                    <div>
+                        <label className="label">Descrição</label>
+                        <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={3} className="input-field"></textarea>
+                    </div>
+                    <div>
+                        <label className="label">Categoria</label>
+                        <select value={category} onChange={e => setCategory(e.target.value)} required className="input-field">
+                            <option value="">Selecione uma categoria</option>
+                            <option>Estudos</option>
+                            <option>Louvor</option>
+                            <option>Mensagens</option>
+                            <option>Eventos</option>
+                            <option>Outros</option>
+                        </select>
+                    </div>
+                    
+                    {config?.fileType ? (
+                        <div>
+                            <label className="label">Arquivo(s)</label>
+                            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-brand-gray-300 border-dashed rounded-md">
+                                <div className="space-y-1 text-center">
+                                    <UploadIcon className="mx-auto h-12 w-12 text-brand-gray-400" />
+                                    <div className="flex text-sm text-brand-gray-600">
+                                        <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-brand-purple hover:text-brand-purple-dark">
+                                            <span>Carregar arquivo(s)</span>
+                                            <input id="file-upload" type="file" className="sr-only" multiple={config.multiFile} accept={config.fileType} onChange={handleFileChange} required />
+                                        </label>
+                                    </div>
+                                    <p className="text-xs text-brand-gray-500">{files?.length ? `${files.length} arquivo(s) selecionado(s)` : 'Nenhum arquivo selecionado'}</p>
                                 </div>
-                                <p className="text-xs text-brand-gray-500">{files?.length ? `${files.length} arquivo(s) selecionado(s)` : 'Nenhum arquivo selecionado'}</p>
                             </div>
                         </div>
-                    </div>
-                ) : (
-                    <div>
-                        <label className="label">URL</label>
-                        <input type="url" value={url} onChange={e => setUrl(e.target.value)} required className="input-field" placeholder="https://..." />
-                    </div>
-                )}
-            </div>
-            <div className="p-6 border-t border-brand-gray-200 flex justify-between gap-3 sticky bottom-0 bg-white">
-                <button type="button" onClick={() => setStep(1)} className="bg-white text-brand-gray-800 font-semibold py-2 px-4 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors">Voltar</button>
-                <div className="flex gap-3">
-                    <button type="button" onClick={onClose} className="bg-white text-brand-gray-800 font-semibold py-2 px-4 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors">Cancelar</button>
-                    <button type="submit" onClick={handleSubmit} disabled={isUploading} className="bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors disabled:bg-brand-gray-500">
-                       {isUploading ? 'Enviando...' : 'Salvar Recurso'}
-                    </button>
+                    ) : (
+                        <div>
+                            <label className="label">URL</label>
+                            <input type="url" value={url} onChange={e => setUrl(e.target.value)} required className="input-field" placeholder="https://..." />
+                        </div>
+                    )}
                 </div>
-            </div>
+                <div className="p-6 border-t border-brand-gray-200 flex justify-between gap-3 sticky bottom-0 bg-white">
+                    <button type="button" onClick={() => setStep(1)} className="bg-white text-brand-gray-800 font-semibold py-2 px-4 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors">Voltar</button>
+                    <div className="flex gap-3">
+                        <button type="button" onClick={onClose} className="bg-white text-brand-gray-800 font-semibold py-2 px-4 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors">Cancelar</button>
+                        <button type="submit" className="bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors">
+                           Salvar Recurso
+                        </button>
+                    </div>
+                </div>
+            </form>
         </>
     );
 

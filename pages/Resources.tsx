@@ -1,49 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import Card from '../components/Card';
-// FIX: Import `ResourceType` to resolve type error.
 import { Resource, Role, ResourceType } from '../types';
 import { DownloadIcon, PlayIcon, FileTextIcon, LinkIcon, PlusIcon, ImageIcon, MusicNoteIcon } from '../components/Icons';
 import ResourceModal from '../components/ResourceModal';
-import { supabase } from '../supabaseClient';
+import { appData } from '../data';
 
 interface ResourcesProps {
   currentUserRole: Role;
 }
 
 const Resources: React.FC<ResourcesProps> = ({ currentUserRole }) => {
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('media');
-
+  
   const canManageResources = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
 
-  const fetchResources = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('resources').select('*').order('created_at', { ascending: false });
-    if (error) {
-        console.error("Error fetching resources:", error);
-    } else {
-        const resourcesWithIcons = data.map(r => ({ ...r, icon: getIcon(r.type) }));
-        setResources(resourcesWithIcons as Resource[]);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchResources();
-  }, [fetchResources]);
-
-  const handleAddResources = async (newResources: Omit<Resource, 'id'>[]) => {
-      const { error } = await supabase.from('resources').insert(newResources);
-      if (error) {
-          console.error("Error adding resources:", error);
-      } else {
-          fetchResources();
-      }
-      setIsModalOpen(false);
-  };
-  
   const getIcon = (type: ResourceType) => {
     switch(type) {
         case 'file': return <FileTextIcon className="w-8 h-8 text-blue-500" />;
@@ -56,6 +27,20 @@ const Resources: React.FC<ResourcesProps> = ({ currentUserRole }) => {
     }
   };
 
+  const [resources, setResources] = useState<Resource[]>(() => 
+    appData.resources.map(r => ({ ...r, icon: getIcon(r.type) }))
+  );
+  
+  const handleAddResources = (newResourcesData: Omit<Resource, 'id'>[]) => {
+      const fullNewResources = newResourcesData.map((res, index) => ({
+          ...res,
+          id: Date.now() + index, // simple unique ID
+          icon: getIcon(res.type),
+      }));
+      setResources(prev => [...fullNewResources, ...prev]);
+      setIsModalOpen(false);
+  };
+  
   const renderActionButton = (resource: Resource) => {
     const commonClasses = "w-full sm:w-auto bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center justify-center gap-2";
     const linkProps = { href: resource.url, target: "_blank", rel: "noopener noreferrer", className: commonClasses };
@@ -126,9 +111,6 @@ const Resources: React.FC<ResourcesProps> = ({ currentUserRole }) => {
           </select>
         </div>
       </div>
-      {loading ? (
-        <div className="text-center py-10">Carregando recursos...</div>
-        ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {filteredResources.length > 0 ? (
           filteredResources.map((resource) => (
@@ -152,7 +134,6 @@ const Resources: React.FC<ResourcesProps> = ({ currentUserRole }) => {
           </div>
         )}
       </div>
-      )}
     </div>
   );
 };

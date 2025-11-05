@@ -1,77 +1,40 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import Card from '../components/Card';
 import { Poll } from '../types';
 import { PlusIcon, UsersIcon } from '../components/Icons';
 import PollModal from '../components/PollModal';
-import { supabase } from '../supabaseClient';
+import { appData } from '../data';
 
 
 const Polls: React.FC = () => {
-    const [polls, setPolls] = useState<Poll[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [polls, setPolls] = useState<Poll[]>(appData.polls);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetchPolls = useCallback(async () => {
-      setLoading(true);
-      const { data, error } = await supabase.from('polls').select('*, poll_options(*)');
-      if (error) {
-        console.error("Error fetching polls:", error);
-      } else {
-        const pollsData = data.map(p => ({
-          ...p,
-          options: p.poll_options,
-          totalVotes: p.poll_options.reduce((sum: number, opt: any) => sum + opt.votes, 0),
-          voted: false, // In a real app, you'd check if the user has voted
+    const handleVote = (pollId: number, optionId: number) => {
+        setPolls(polls.map(p => {
+            if (p.id === pollId && !p.voted) {
+                return {
+                    ...p,
+                    voted: true,
+                    totalVotes: (p.totalVotes || 0) + 1,
+                    options: p.options.map(opt => 
+                        opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
+                    )
+                };
+            }
+            return p;
         }));
-        setPolls(pollsData as Poll[]);
-      }
-      setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchPolls();
-    }, [fetchPolls]);
-
-    const handleVote = async (pollId: number | undefined, optionId: number) => {
-      if (!pollId) return;
-      // Using an RPC function in Supabase is the recommended way to handle increments atomically.
-      const { error } = await supabase.rpc('increment_vote', { option_id: optionId });
-      if (error) {
-        console.error("Error voting:", error);
-      } else {
-        fetchPolls();
-      }
     };
     
-    const handleAddPoll = async (pollData: Omit<Poll, 'id' | 'votes' | 'voted' | 'totalVotes'>) => {
-        // 1. Insert the poll question
-        const { data, error } = await supabase.from('polls').insert({
-            question: pollData.question,
-            createdBy: pollData.createdBy,
-            createdAt: pollData.createdAt,
-        }).select().single();
-
-        if (error || !data) {
-            console.error("Error creating poll:", error);
-            return;
-        }
-
-        // 2. Insert the options linked to the new poll
-        const optionsToInsert = pollData.options.map(opt => ({
-            text: opt.text,
-            poll_id: data.id,
-            votes: 0,
-        }));
-
-        const { error: optionsError } = await supabase.from('poll_options').insert(optionsToInsert);
-
-        if (optionsError) {
-            console.error("Error adding poll options:", optionsError);
-            // Optional: delete the poll if options fail
-        } else {
-            fetchPolls();
-        }
-
+    const handleAddPoll = (pollData: Omit<Poll, 'id' | 'votes' | 'voted' | 'totalVotes'>) => {
+        const newPoll: Poll = {
+            id: Date.now(),
+            ...pollData,
+            options: pollData.options.map((opt, i) => ({ ...opt, id: Date.now() + i, votes: 0 })),
+            totalVotes: 0,
+            voted: false
+        };
+        setPolls(prev => [newPoll, ...prev]);
         setIsModalOpen(false);
     };
 
@@ -146,13 +109,10 @@ const Polls: React.FC = () => {
                     <PlusIcon className="w-5 h-5" /> Nova Enquete
                 </button>
             </div>
-            {loading ? (
-              <div className="text-center py-10">Carregando enquetes...</div>
-            ) : (
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {polls.map(poll => <PollCard key={poll.id} poll={poll} />)}
             </div>
-            )}
         </div>
     );
 };

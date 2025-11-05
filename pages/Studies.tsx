@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import Card from '../components/Card';
 import { Study, Role, Comment } from '../types';
 import { PlusIcon, BookOpenIcon, ClockIcon, UserIcon, DownloadIcon, PencilIcon, ChatBubbleLeftIcon, TrashIcon } from '../components/Icons';
 import StudyModal from '../components/StudyModal';
 import StudyDetailsModal from '../components/StudyDetailsModal';
-import { supabase } from '../supabaseClient';
+import { appData } from '../data';
 
 
 interface StudiesProps {
@@ -12,81 +12,62 @@ interface StudiesProps {
 }
 
 const Studies: React.FC<StudiesProps> = ({ currentUserRole }) => {
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [studies, setStudies] = useState<Study[]>(appData.studies);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedStudy, setSelectedStudy] = useState<Study | null>(null);
 
   const canManageStudies = ['Líder', 'Pastor'].includes(currentUserRole);
 
-  const fetchStudies = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('studies').select('*, comments(*)').order('created_at', { ascending: false });
-    
-    if (error) {
-        console.error('Error fetching studies', error);
-    } else {
-        setStudies(data as Study[]);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchStudies();
-  }, [fetchStudies]);
-
-  const handleSaveStudy = async (studyData: Omit<Study, 'id' | 'progress'>, studyId?: number) => {
+  const handleSaveStudy = (studyData: Omit<Study, 'id' | 'progress'>, studyId?: number) => {
     if (studyId) {
       // Edit logic
-      const { error } = await supabase.from('studies').update(studyData).eq('id', studyId);
-      if (error) console.error("Error updating study:", error);
+      setStudies(studies.map(s => s.id === studyId ? { ...s, ...studyData } : s));
     } else {
       // Add new logic
-      const { error } = await supabase.from('studies').insert([{...studyData, progress: 0}]);
-      if (error) console.error("Error adding study:", error);
+      const newStudy: Study = {
+        id: Date.now(),
+        ...studyData,
+        progress: 0,
+        comments: []
+      };
+      setStudies(prevStudies => [newStudy, ...prevStudies]);
     }
-    fetchStudies();
     setIsEditModalOpen(false);
     setSelectedStudy(null);
   };
 
-  const handleDeleteStudy = async (studyId: number | undefined) => {
-    if (!studyId) return;
+  const handleDeleteStudy = (studyId: number) => {
     if (window.confirm('Tem certeza que deseja excluir este estudo? Todos os dados, incluindo lições e comentários, serão perdidos permanentemente.')) {
-        const { error } = await supabase.from('studies').delete().eq('id', studyId);
-        if (error) console.error("Error deleting study:", error);
-        else fetchStudies();
+        setStudies(studies.filter(s => s.id !== studyId));
     }
   };
 
-  const handleAddComment = async (studyId: number | undefined, commentText: string) => {
-    if (!studyId) return;
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: profile } = await supabase.from('members').select('name, initials, avatarColor').eq('id', user.id).single();
-    if (!profile) return;
-
-    const newComment = {
+  const handleAddComment = (studyId: number, commentText: string) => {
+    const newComment: Comment = {
+        id: Date.now(),
         study_id: studyId,
-        user_id: user.id,
         text: commentText,
-        authorName: profile.name,
-        authorInitials: profile.initials,
-        authorAvatarColor: profile.avatarColor,
+        authorName: 'Usuário Atual', // Mocked user
+        authorInitials: 'UA',
+        authorAvatarColor: 'bg-indigo-500',
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const { error } = await supabase.from('comments').insert(newComment);
-    if(error) {
-        console.error("Error adding comment:", error);
-    } else {
-        fetchStudies(); // Refetch to update comment list
-        if (selectedStudy) {
-            // Also update the selected study if it's open in the details modal
-            setSelectedStudy(prev => prev ? {...prev, comments: [...(prev.comments || []), newComment as Comment]} : null);
+    const updatedStudies = studies.map(study => {
+        if (study.id === studyId) {
+            return {
+                ...study,
+                comments: [...(study.comments || []), newComment]
+            };
         }
+        return study;
+    });
+
+    setStudies(updatedStudies);
+    
+    if (selectedStudy && selectedStudy.id === studyId) {
+        setSelectedStudy(prev => prev ? {...prev, comments: [...(prev.comments || []), newComment]} : null);
     }
   };
 
@@ -143,9 +124,7 @@ const Studies: React.FC<StudiesProps> = ({ currentUserRole }) => {
             </button>
         )}
       </div>
-       {loading ? (
-          <div className="text-center py-10">Carregando estudos...</div>
-        ) : (
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {studies.map((study) => (
           <Card key={study.id} className="flex flex-col">
@@ -199,7 +178,6 @@ const Studies: React.FC<StudiesProps> = ({ currentUserRole }) => {
           </Card>
         ))}
       </div>
-      )}
     </div>
   );
 };

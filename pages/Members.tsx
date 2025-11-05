@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import Card from '../components/Card';
 import { Member, MemberPageData, Role } from '../types';
 import { UsersIcon, SearchIcon, ChevronDownIcon, PlusIcon, MailIcon, PhoneIcon, CalendarIcon, BookOpenIcon, ShieldIcon, PencilIcon } from '../components/Icons';
 import AddMemberModal from '../components/AddMemberModal';
 import EditMemberModal from '../components/EditMemberModal';
-import { supabase } from '../supabaseClient';
 
 
 const roleColors: { [key: string]: string } = {
@@ -19,7 +18,7 @@ interface MemberCardProps {
   member: Member;
   canViewPersonalData: boolean;
   canManageMembers: boolean;
-  onRoleChange: (memberId: string, newRole: Role) => void;
+  onRoleChange: (memberId: number, newRole: Role) => void;
   onEdit: (member: Member) => void;
 }
 
@@ -96,30 +95,13 @@ interface MembersPageProps {
 }
 
 const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<Member[]>(data.members);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
 
   const canViewPersonalData = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
   const canManageMembers = ['Líder', 'Pastor'].includes(currentUserRole);
-
-  const fetchMembers = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: false });
-    if (error) {
-        console.error("Error fetching members:", error);
-    } else {
-        setMembers(data as Member[]);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
-
 
     const handleOpenEditModal = (member: Member) => {
         setEditingMember(member);
@@ -133,29 +115,11 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
     };
 
 
-  const handleRoleChange = async (memberId: string, newRole: Role) => {
-    const { error } = await supabase.from('members').update({ role: newRole }).eq('id', memberId);
-    if (error) {
-        console.error("Error updating role:", error);
-    } else {
-        fetchMembers();
-    }
+  const handleRoleChange = (memberId: number, newRole: Role) => {
+    setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m));
   };
 
-  const handleAddMember = async (memberData: any) => {
-    // 1. Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: memberData.email,
-        password: memberData.password,
-    });
-
-    if (authError || !authData.user) {
-        console.error("Error creating user:", authError?.message);
-        alert(`Erro ao criar usuário: ${authError?.message}`);
-        return;
-    }
-    
-    // 2. Create profile in 'members' table
+  const handleAddMember = (memberData: any) => {
     const getInitials = (name: string) => {
         const names = name.split(' ');
         if (names.length > 1) {
@@ -167,8 +131,8 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
     const avatarColors = ['bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'];
     const randomColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
 
-    const newMemberProfile: Omit<Member, 'created_at'> = {
-        id: authData.user.id,
+    const newMember: Member = {
+        id: Date.now(),
         name: memberData.name,
         initials: getInitials(memberData.name).toUpperCase(),
         avatarColor: randomColor,
@@ -182,39 +146,14 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
         address: memberData.address,
         baptismDate: memberData.baptismDate,
     };
-
-    const { error: profileError } = await supabase.from('members').insert(newMemberProfile);
-
-    if (profileError) {
-        console.error("Error creating member profile:", profileError);
-        alert(`Erro ao criar perfil: ${profileError.message}. O usuário foi criado, mas o perfil falhou. Contate o suporte.`);
-    } else {
-        fetchMembers();
-        handleCloseModals();
-    }
+    setMembers(prev => [newMember, ...prev]);
+    handleCloseModals();
   };
   
-    const handleUpdateMember = async (updatedData: any) => {
+    const handleUpdateMember = (updatedData: any) => {
         if (!editingMember) return;
-
-        const { error } = await supabase.from('members').update(updatedData).eq('id', editingMember.id);
-        
-        if (error) {
-            console.error("Error updating member:", error);
-        } else {
-             // Handle email/password update in Auth if changed
-            if (updatedData.email !== editingMember.email || updatedData.password) {
-                const authUpdateData: any = {};
-                if (updatedData.email !== editingMember.email) authUpdateData.email = updatedData.email;
-                if (updatedData.password) authUpdateData.password = updatedData.password;
-
-                // This needs to be done by an admin or the user themselves.
-                // For simplicity, we'll skip the auth user update as it requires more complex logic.
-                console.warn("Auth user email/password update skipped for simplicity.");
-            }
-            fetchMembers();
-            handleCloseModals();
-        }
+        setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...updatedData } : m));
+        handleCloseModals();
     };
 
 
@@ -279,15 +218,11 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
           </div>
       </div>
       
-      {loading ? (
-        <div className="text-center py-10">Carregando membros...</div>
-      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {members.map(member => (
           <MemberCard key={member.id} member={member} canViewPersonalData={canViewPersonalData} canManageMembers={canManageMembers} onRoleChange={handleRoleChange} onEdit={handleOpenEditModal} />
         ))}
       </div>
-      )}
     </div>
   );
 };

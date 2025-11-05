@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Study, Comment } from '../types';
 import { BookOpenIcon, ClockIcon, UserIcon, DownloadIcon, FileTextIcon } from './Icons';
 
@@ -11,16 +11,7 @@ interface StudyDetailsModalProps {
 const StudyDetailsModal: React.FC<StudyDetailsModalProps> = ({ study, onClose, onAddComment }) => {
     const [newComment, setNewComment] = useState('');
 
-    const currentUser = useMemo(() => {
-        const email = localStorage.getItem('userEmail');
-        if (!email) return { name: 'Usuário', initials: 'U' };
-
-        const namePart = email.split('@')[0];
-        const name = namePart.charAt(0).toUpperCase() + namePart.slice(1).replace(/[^a-zA-Z0-9]/g, '');
-        const initials = (name[0] || '').toUpperCase();
-        
-        return { name, initials };
-    }, []);
+    const currentUser = { name: 'Usuário', initials: 'U' };
 
     const handleSubmitComment = (e: React.FormEvent) => {
         e.preventDefault();
