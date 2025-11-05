@@ -5,7 +5,7 @@ export type Page = 'Dashboard' | 'Eventos' | 'Estudos' | 'Membros' | 'Recursos' 
 export type Role = 'Líder' | 'Pastor' | 'Regente' | 'Tesoureiro' | 'Membro';
 
 export interface Event {
-    id: number;
+    id?: number;
     title: string;
     description: string;
     date: string; // YYYY-MM-DD
@@ -19,6 +19,7 @@ export interface Event {
     confirmedAttendees: number;
     attendees?: string; // Used in dashboard, e.g., "35 confirmados"
     bannerUrl?: string;
+    created_at?: string;
 }
 
 export interface Answer {
@@ -39,16 +40,18 @@ export interface Lesson {
 }
 
 export interface Comment {
-    id: number;
+    id?: number;
+    study_id: number;
+    user_id: string;
     authorName: string;
     authorInitials: string;
     authorAvatarColor: string;
     text: string;
-    timestamp: string;
+    created_at?: string;
 }
 
 export interface Study {
-    id: number;
+    id?: number;
     title: string;
     description: string;
     theme: string;
@@ -59,10 +62,11 @@ export interface Study {
     lessons: Lesson[];
     materialUrl?: string;
     comments?: Comment[];
+    created_at?: string;
 }
 
 export interface Member {
-    id: number;
+    id: string; // Changed to string for Supabase UUID
     name: string;
     initials: string;
     avatarColor: string;
@@ -75,12 +79,13 @@ export interface Member {
     dob?: string;
     address?: string;
     baptismDate?: string;
+    created_at?: string;
 }
 
 export type ResourceType = 'file' | 'video' | 'audio' | 'link' | 'gallery' | 'playlist';
 
 export interface Resource {
-    id: number;
+    id?: number;
     title: string;
     description: string;
     category: string;
@@ -89,6 +94,7 @@ export interface Resource {
     action: 'Download' | 'Assistir' | 'Ouvir' | 'Acessar' | 'Ver';
     details?: string;
     url: string;
+    created_at?: string;
 }
 
 export interface FinanceStat {
@@ -180,7 +186,7 @@ export interface PermissionCategory {
 }
 
 export interface IndividualPermissionMember {
-    id: number;
+    id: string; // Changed to string for Supabase UUID
     name: string;
     initials: string;
     role: Role;
@@ -210,16 +216,18 @@ export interface PollOption {
     id: number;
     text: string;
     votes: number;
+    poll_id?: number;
 }
 
 export interface Poll {
-    id: number;
+    id?: number;
     question: string;
     options: PollOption[];
     createdBy: string;
     createdAt: string;
-    totalVotes: number;
-    voted: boolean;
+    totalVotes?: number;
+    voted?: boolean;
+    created_at?: string;
 }
 
 export interface AppData {

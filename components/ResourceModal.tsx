@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Resource, ResourceType } from '../types';
 import { 
-    ImageIcon, MusicNoteIcon, PlayIcon, FileTextIcon, LinkIcon, UploadIcon, TrashIcon 
+    ImageIcon, MusicNoteIcon, PlayIcon, FileTextIcon, LinkIcon, UploadIcon
 } from './Icons';
+import { supabase } from '../supabaseClient';
+
 
 interface ResourceModalProps {
     onClose: () => void;
@@ -11,15 +13,17 @@ interface ResourceModalProps {
 
 const resourceTypesConfig = {
     gallery: { title: 'Galeria de Fotos', icon: <ImageIcon className="w-8 h-8 text-indigo-500" />, multiFile: true, fileType: 'image/*' },
-    playlist: { title: 'Playlist de Música', icon: <MusicNoteIcon className="w-8 h-8 text-pink-500" /> },
     audio: { title: 'Arquivo de Áudio', icon: <PlayIcon className="w-8 h-8 text-teal-500" />, multiFile: false, fileType: 'audio/*' },
     file: { title: 'Documento', icon: <FileTextIcon className="w-8 h-8 text-blue-500" />, multiFile: false, fileType: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx' },
     link: { title: 'Link Útil', icon: <LinkIcon className="w-8 h-8 text-orange-500" /> },
+    // Video and Playlist might require more complex handling (e.g., YouTube links)
+    // For now, we'll treat them as links.
 };
 
 const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
     const [step, setStep] = useState(1);
     const [type, setType] = useState<ResourceType | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Form fields
     const [title, setTitle] = useState('');
@@ -39,28 +43,40 @@ const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
         setFiles(e.target.files);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!type || !config) return;
 
+        setIsUploading(true);
         let newResources: Omit<Resource, 'id'>[] = [];
 
         if (files && files.length > 0) {
-            // FIX: Explicitly type `file` as `File` to resolve type errors. `FileList` contains `File` objects,
-            // which have `name` and `size` properties and can be used with `URL.createObjectURL`.
-            Array.from(files).forEach((file: File) => {
+            for (const file of Array.from(files)) {
+                // FIX: Cast `file` to `File` as TypeScript is not inferring its type correctly in this context.
+                const f = file as File;
+                const filePath = `public/${type}/${Date.now()}-${f.name}`;
+                const { error: uploadError } = await supabase.storage.from('resources').upload(filePath, f);
+
+                if (uploadError) {
+                    console.error("Upload error:", uploadError);
+                    alert(`Falha ao enviar o arquivo: ${f.name}`);
+                    continue; // Skip to next file
+                }
+
+                const { data: { publicUrl } } = supabase.storage.from('resources').getPublicUrl(filePath);
+
                 newResources.push({
-                    title: files.length > 1 ? `${title} (${file.name})` : title,
+                    title: files.length > 1 ? `${title} (${f.name})` : title,
                     description,
                     category,
                     type,
-                    url: URL.createObjectURL(file),
-                    icon: config.icon,
+                    url: publicUrl,
+                    icon: config.icon, // Icon is for display, not stored in DB
                     action: type === 'gallery' ? 'Ver' : type === 'audio' ? 'Ouvir' : 'Download',
-                    details: `${(file.size / 1024).toFixed(2)} KB`
+                    details: `${(f.size / 1024).toFixed(2)} KB`
                 });
-            });
-        } else {
+            }
+        } else if (type === 'link') {
             newResources.push({
                 title,
                 description,
@@ -74,6 +90,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
         }
         
         onSave(newResources);
+        setIsUploading(false);
     };
 
     const renderStep1 = () => (
@@ -103,7 +120,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
                 <h2 className="text-xl font-bold text-brand-gray-900">Adicionar {config?.title}</h2>
                 <p className="text-sm text-brand-gray-600">Preencha os detalhes abaixo.</p>
             </div>
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div>
                     <label className="label">Título</label>
                     <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="input-field" />
@@ -146,12 +163,14 @@ const ResourceModal: React.FC<ResourceModalProps> = ({ onClose, onSave }) => {
                         <input type="url" value={url} onChange={e => setUrl(e.target.value)} required className="input-field" placeholder="https://..." />
                     </div>
                 )}
-            </form>
+            </div>
             <div className="p-6 border-t border-brand-gray-200 flex justify-between gap-3 sticky bottom-0 bg-white">
                 <button type="button" onClick={() => setStep(1)} className="bg-white text-brand-gray-800 font-semibold py-2 px-4 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors">Voltar</button>
                 <div className="flex gap-3">
                     <button type="button" onClick={onClose} className="bg-white text-brand-gray-800 font-semibold py-2 px-4 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors">Cancelar</button>
-                    <button type="submit" onClick={handleSubmit} className="bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors">Salvar Recurso</button>
+                    <button type="submit" onClick={handleSubmit} disabled={isUploading} className="bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors disabled:bg-brand-gray-500">
+                       {isUploading ? 'Enviando...' : 'Salvar Recurso'}
+                    </button>
                 </div>
             </div>
         </>

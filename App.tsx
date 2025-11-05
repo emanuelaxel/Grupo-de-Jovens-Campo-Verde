@@ -12,7 +12,9 @@ import Polls from './pages/Polls';
 import Auth from './pages/Auth';
 import AccessDenied from './components/AccessDenied';
 import { appData } from './data';
-import { Page, Role } from './types';
+import { Page, Role, Member } from './types';
+import { supabase } from './supabaseClient';
+import type { Session } from '@supabase/supabase-js';
 
 const pagePermissions: { [key in Page]?: Role[] } = {
     'Finanças': ['Líder', 'Pastor', 'Tesoureiro'],
@@ -21,56 +23,63 @@ const pagePermissions: { [key in Page]?: Role[] } = {
 };
 
 const App: React.FC = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [session, setSession] = useState<Session | null>(null);
+    const [currentUserProfile, setCurrentUserProfile] = useState<Member | null>(null);
+    const [loading, setLoading] = useState(true);
     const [page, setPage] = useState<Page>('Dashboard');
-    const [currentUserRole, setCurrentUserRole] = useState<Role>('Membro');
 
-    // Simulate role selection on login from Auth.tsx
     useEffect(() => {
-        const storedEmail = localStorage.getItem('userEmail');
-        if (!storedEmail) {
-            setCurrentUserRole('Membro'); // Default if no one is logged in
-            return;
-        }
+        const getSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            setSession(session);
+            setLoading(false);
+        };
 
-        // Hardcoded users
-        if (storedEmail === 'lider@email.com') {
-            setCurrentUserRole('Líder');
-            return;
-        } 
-        if (storedEmail === 'emanoelaxl@hotmail.com') {
-            setCurrentUserRole('Pastor');
-            return;
-        }
-        
-        // Check dynamic users from localStorage
-        const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
-        const currentUser = storedUsers.find((user: any) => user.email === storedEmail);
-        
-        if (currentUser) {
-            setCurrentUserRole(currentUser.role);
-        } else {
-            setCurrentUserRole('Membro'); // Fallback to default role
-        }
+        getSession();
 
-    }, [isAuthenticated]);
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+        });
+
+        return () => {
+            authListener?.subscription.unsubscribe();
+        };
+    }, []);
+
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (session?.user) {
+                const { data, error } = await supabase
+                    .from('members')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (data) {
+                    setCurrentUserProfile(data);
+                } else if (error) {
+                    console.error('Error fetching user profile:', error);
+                }
+            } else {
+                setCurrentUserProfile(null);
+            }
+        };
+
+        fetchUserProfile();
+    }, [session]);
 
 
-    const handleLoginSuccess = (email: string) => {
-        localStorage.setItem('userEmail', email);
-        setIsAuthenticated(true);
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
         setPage('Dashboard');
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem('userEmail');
-        setIsAuthenticated(false);
-    };
+    const currentUserRole = currentUserProfile?.role || 'Membro';
 
     const hasAccess = useMemo(() => {
         const requiredRoles = pagePermissions[page];
         if (!requiredRoles) {
-            return true; // Page is public within the app
+            return true; 
         }
         return requiredRoles.includes(currentUserRole);
     }, [page, currentUserRole]);
@@ -84,33 +93,37 @@ const App: React.FC = () => {
             case 'Dashboard':
                 return <Dashboard data={appData.dashboard} currentUserRole={currentUserRole} />;
             case 'Eventos':
-                return <Events initialEvents={appData.events} currentUserRole={currentUserRole} />;
+                return <Events currentUserRole={currentUserRole} />;
             case 'Estudos':
-                return <Studies initialStudies={appData.studies} currentUserRole={currentUserRole} />;
+                return <Studies currentUserRole={currentUserRole} />;
             case 'Membros':
                 return <Members data={appData.membersPage} currentUserRole={currentUserRole} />;
             case 'Recursos':
-                return <Resources initialResources={appData.resources} currentUserRole={currentUserRole} />;
+                return <Resources currentUserRole={currentUserRole} />;
             case 'Finanças':
                 return <Finances data={appData.finances} />;
             case 'Permissões':
                 return <Permissions data={appData.permissionsPage} currentUserRole={currentUserRole} />;
             case 'Enquetes':
-                 return <Polls initialPolls={appData.polls} />;
+                 return <Polls />;
             default:
                 return <Dashboard data={appData.dashboard} currentUserRole={currentUserRole} />;
         }
     };
 
-    if (!isAuthenticated) {
-        return <Auth onLoginSuccess={(email) => handleLoginSuccess(email)} />;
+    if (loading) {
+        return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+    }
+
+    if (!session) {
+        return <Auth />;
     }
 
     return (
         <div className="flex h-screen bg-brand-gray-100 font-sans">
             <Sidebar currentPage={page} setPage={setPage} onLogout={handleLogout} />
             <main className="flex-1 overflow-y-auto">
-                <Header page={page} onLogout={handleLogout} currentUserRole={currentUserRole} />
+                <Header page={page} onLogout={handleLogout} currentUserProfile={currentUserProfile} />
                 <div className="p-8">
                     {renderPage()}
                 </div>

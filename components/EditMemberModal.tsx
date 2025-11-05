@@ -34,9 +34,8 @@ const EditMemberModal: React.FC<EditMemberModalProps> = ({ onClose, onSave, memb
         const updatedData: any = {
             name, email, role, phone, dob, address, baptismDate
         };
-        if (password) {
-            updatedData.password = password;
-        }
+        // Password update should be handled carefully, e.g., via supabase.auth.updateUser
+        // For this modal, we focus on profile data.
         onSave(updatedData);
     };
 
@@ -50,8 +49,8 @@ const EditMemberModal: React.FC<EditMemberModalProps> = ({ onClose, onSave, memb
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input placeholder="Nome completo" required className="input-field" type="text" value={name} onChange={e => setName(e.target.value)} />
-                        <input placeholder="E-mail" required className="input-field" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-                        <input placeholder="Nova Senha (deixe em branco para manter)" className="input-field" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+                        <input placeholder="E-mail (não pode ser alterado)" required disabled className="input-field bg-brand-gray-100" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                        <input placeholder="Nova Senha (deixe em branco)" className="input-field" type="password" value={password} onChange={e => setPassword(e.target.value)} />
                         <select value={role} onChange={e => setRole(e.target.value as Role)} required className="input-field">
                             <option value="Membro">Membro</option>
                             <option value="Líder">Líder</option>
@@ -82,6 +81,10 @@ const EditMemberModal: React.FC<EditMemberModalProps> = ({ onClose, onSave, memb
                   placeholder-color: #6C757D;
                   color: #212529;
                   border-radius: 0.5rem;
+                }
+                .input-field:disabled {
+                    background-color: #E9ECEF;
+                    cursor: not-allowed;
                 }
                 .input-field:focus {
                   outline: none;

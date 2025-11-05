@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Study, Lesson, Question, Answer } from '../types';
-// FIX: Imported FileTextIcon.
-// FIX: Import missing FileTextIcon.
-import { PlusIcon, TrashIcon, UploadIcon, FileTextIcon } from './Icons';
+import { PlusIcon, TrashIcon, FileTextIcon } from './Icons';
+import { supabase } from '../supabaseClient';
+
 
 interface StudyModalProps {
     onClose: () => void;
-    onSave: (studyData: Omit<Study, 'id' | 'progress'>) => void;
+    onSave: (studyData: Omit<Study, 'id' | 'progress'>, studyId?: number) => void;
     study: Study | null;
 }
 
@@ -24,6 +24,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ onClose, onSave, study }) => {
     const [lessons, setLessons] = useState<Lesson[]>([emptyLesson()]);
     const [materialFile, setMaterialFile] = useState<File | null>(null);
     const [materialFileName, setMaterialFileName] = useState<string>('');
+    const [isUploading, setIsUploading] = useState(false);
 
 
     useEffect(() => {
@@ -34,8 +35,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ onClose, onSave, study }) => {
             setSchedule(study.schedule);
             setDescription(study.description);
             setScripture(study.scripture);
-            setLessons(study.lessons.length > 0 ? study.lessons : [emptyLesson()]);
-            // Note: Can't pre-populate file input, but could show existing file name
+            setLessons(study.lessons?.length > 0 ? study.lessons : [emptyLesson()]);
             if(study.materialUrl) {
                 setMaterialFileName('Material existente anexado.');
             }
@@ -86,10 +86,34 @@ const StudyModal: React.FC<StudyModalProps> = ({ onClose, onSave, study }) => {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const materialUrl = materialFile ? URL.createObjectURL(materialFile) : study?.materialUrl;
-        onSave({ title, theme, leader, schedule, description, scripture, lessons, materialUrl });
+        setIsUploading(true);
+
+        let materialUrl = study?.materialUrl;
+
+        if (materialFile) {
+            const filePath = `study-materials/${Date.now()}-${materialFile.name}`;
+            const { error: uploadError } = await supabase.storage
+                .from('resources')
+                .upload(filePath, materialFile);
+
+            if (uploadError) {
+                console.error("Error uploading material:", uploadError);
+                alert("Falha ao enviar o material de apoio.");
+                setIsUploading(false);
+                return;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('resources')
+                .getPublicUrl(filePath);
+            
+            materialUrl = publicUrl;
+        }
+        
+        onSave({ title, theme, leader, schedule, description, scripture, lessons, materialUrl }, study?.id);
+        setIsUploading(false);
     };
 
     return (
@@ -185,7 +209,9 @@ const StudyModal: React.FC<StudyModalProps> = ({ onClose, onSave, study }) => {
 
                     <div className="p-6 border-t border-brand-gray-200 flex justify-end gap-3 sticky bottom-0 bg-white">
                         <button type="button" onClick={onClose} className="bg-white text-brand-gray-800 font-semibold py-2 px-4 rounded-lg border border-brand-gray-300 hover:bg-brand-gray-100 transition-colors">Cancelar</button>
-                        <button type="submit" className="bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors">Salvar Estudo</button>
+                        <button type="submit" disabled={isUploading} className="bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors disabled:bg-brand-gray-500">
+                           {isUploading ? 'Salvando...' : 'Salvar Estudo'}
+                        </button>
                     </div>
                 </form>
             </div>

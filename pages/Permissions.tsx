@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Card from '../components/Card';
 import { PermissionsPageData, Role, PermissionCategory, IndividualPermissionMember, Permission } from '../types';
 import { CheckIcon, XIcon, ShieldIcon, PencilIcon } from '../components/Icons';
+import { supabase } from '../supabaseClient';
+
 
 const roleColors: { [key in Role]: { tag: string; } } = {
   'Líder': { tag: 'bg-purple-100 text-purple-700' },
@@ -50,7 +52,7 @@ interface PermissionModalProps {
     member: IndividualPermissionMember;
     permissionCategories: PermissionCategory[];
     onClose: () => void;
-    onSave: (memberId: number, extraPermissions: string[]) => void;
+    onSave: (memberId: string, extraPermissions: string[]) => void;
 }
 
 const PermissionModal: React.FC<PermissionModalProps> = ({ member, permissionCategories, onClose, onSave }) => {
@@ -127,10 +129,24 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ member, permissionCat
 
 const Permissions: React.FC<{ data: PermissionsPageData; currentUserRole: Role }> = ({ data, currentUserRole }) => {
     const [selectedRole, setSelectedRole] = useState<Role>('Líder');
-    const [members, setMembers] = useState<IndividualPermissionMember[]>(data.individualPermissionMembers);
+    const [members, setMembers] = useState<IndividualPermissionMember[]>([]);
     const [modalState, setModalState] = useState<{isOpen: boolean; member: IndividualPermissionMember | null}>({isOpen: false, member: null});
     
-    const canManage = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
+    const canManage = ['Líder', 'Pastor'].includes(currentUserRole);
+
+    const fetchMembers = useCallback(async () => {
+        const { data, error } = await supabase.from('members').select('id, name, initials, role, avatarColor, extraPermissions');
+        if (error) {
+            console.error("Error fetching members for permissions:", error);
+        } else {
+            setMembers(data as IndividualPermissionMember[]);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchMembers();
+    }, [fetchMembers]);
+
 
     const handleOpenModal = (member: IndividualPermissionMember) => {
         if (canManage) {
@@ -142,8 +158,13 @@ const Permissions: React.FC<{ data: PermissionsPageData; currentUserRole: Role }
         setModalState({ isOpen: false, member: null });
     };
 
-    const handleSavePermissions = (memberId: number, extraPermissions: string[]) => {
-        setMembers(prevMembers => prevMembers.map(m => m.id === memberId ? { ...m, extraPermissions } : m));
+    const handleSavePermissions = async (memberId: string, extraPermissions: string[]) => {
+        const { error } = await supabase.from('members').update({ extraPermissions }).eq('id', memberId);
+        if (error) {
+            console.error("Error saving permissions:", error);
+        } else {
+            fetchMembers();
+        }
         handleCloseModal();
     };
     
@@ -218,8 +239,8 @@ const Permissions: React.FC<{ data: PermissionsPageData; currentUserRole: Role }
                 </div>
                  <div className="flex items-center gap-2 mb-2">
                     <span className="font-semibold text-brand-gray-700">Função:</span>
-                    <span className={`text-sm font-semibold px-3 py-1 rounded-full ${roleColors[data.currentUser.role].tag}`}>
-                        {data.currentUser.role}
+                    <span className={`text-sm font-semibold px-3 py-1 rounded-full ${roleColors[currentUserRole].tag}`}>
+                        {currentUserRole}
                     </span>
                 </div>
                 <p className="text-sm text-blue-800/80 mb-4">{data.currentUser.description}</p>

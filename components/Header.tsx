@@ -1,28 +1,27 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Page, Role } from '../types';
+import { Page, Member } from '../types';
 import { BellIcon, ChevronDownIcon, SearchIcon, LogoutIcon } from './Icons';
 
 interface HeaderProps {
   page: Page;
   onLogout: () => void;
-  currentUserRole: Role;
+  currentUserProfile: Member | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ page, onLogout, currentUserRole }) => {
+const Header: React.FC<HeaderProps> = ({ page, onLogout, currentUserProfile }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentUser = useMemo(() => {
-    const email = localStorage.getItem('userEmail');
-    if (!email) return { name: 'Usuário', initials: 'U' };
-
-    const namePart = email.split('@')[0];
-    const name = namePart.charAt(0).toUpperCase() + namePart.slice(1).replace(/[^a-zA-Z0-9]/g, '');
-    const initials = (name[0] || '').toUpperCase();
-    
-    return { name, initials };
-  }, []);
+  const currentUserDisplay = useMemo(() => {
+    if (!currentUserProfile) {
+        return { name: 'Usuário', initials: 'U', role: 'Membro' };
+    }
+    return {
+        name: currentUserProfile.name,
+        initials: currentUserProfile.initials,
+        role: currentUserProfile.role,
+    };
+  }, [currentUserProfile]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -55,11 +54,11 @@ const Header: React.FC<HeaderProps> = ({ page, onLogout, currentUserRole }) => {
           <div className="relative" ref={dropdownRef}>
             <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-3 cursor-pointer">
               <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-br from-purple-500 to-indigo-600">
-                {currentUser.initials}
+                {currentUserDisplay.initials}
               </div>
               <div>
-                <p className="font-semibold text-sm text-brand-gray-800">{currentUser.name}</p>
-                <p className="text-xs text-brand-gray-500">{currentUserRole}</p>
+                <p className="font-semibold text-sm text-brand-gray-800">{currentUserDisplay.name}</p>
+                <p className="text-xs text-brand-gray-500">{currentUserDisplay.role}</p>
               </div>
               <ChevronDownIcon className={`w-5 h-5 text-brand-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>

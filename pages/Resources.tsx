@@ -1,43 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Card from '../components/Card';
-import { Resource, Role } from '../types';
+// FIX: Import `ResourceType` to resolve type error.
+import { Resource, Role, ResourceType } from '../types';
 import { DownloadIcon, PlayIcon, FileTextIcon, LinkIcon, PlusIcon, ImageIcon, MusicNoteIcon } from '../components/Icons';
 import ResourceModal from '../components/ResourceModal';
+import { supabase } from '../supabaseClient';
 
 interface ResourcesProps {
-  initialResources: Resource[];
   currentUserRole: Role;
 }
 
-const Resources: React.FC<ResourcesProps> = ({ initialResources, currentUserRole }) => {
-  const [resources, setResources] = useState(initialResources);
+const Resources: React.FC<ResourcesProps> = ({ currentUserRole }) => {
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('media');
 
   const canManageResources = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
 
-  const handleAddResources = (newResources: Omit<Resource, 'id'>[]) => {
-      const fullNewResources = newResources.map(res => ({
-        ...res,
-        id: Date.now() + Math.random(),
-      }));
-      setResources(prev => [...fullNewResources, ...prev]);
+  const fetchResources = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('resources').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error("Error fetching resources:", error);
+    } else {
+        const resourcesWithIcons = data.map(r => ({ ...r, icon: getIcon(r.type) }));
+        setResources(resourcesWithIcons as Resource[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchResources();
+  }, [fetchResources]);
+
+  const handleAddResources = async (newResources: Omit<Resource, 'id'>[]) => {
+      const { error } = await supabase.from('resources').insert(newResources);
+      if (error) {
+          console.error("Error adding resources:", error);
+      } else {
+          fetchResources();
+      }
       setIsModalOpen(false);
   };
   
+  const getIcon = (type: ResourceType) => {
+    switch(type) {
+        case 'file': return <FileTextIcon className="w-8 h-8 text-blue-500" />;
+        case 'video': return <PlayIcon className="w-8 h-8 text-red-500" />;
+        case 'audio': return <PlayIcon className="w-8 h-8 text-teal-500" />;
+        case 'link': return <LinkIcon className="w-8 h-8 text-orange-500" />;
+        case 'gallery': return <ImageIcon className="w-8 h-8 text-indigo-500" />;
+        case 'playlist': return <MusicNoteIcon className="w-8 h-8 text-pink-500" />;
+        default: return <FileTextIcon className="w-8 h-8 text-gray-500" />;
+    }
+  };
+
   const renderActionButton = (resource: Resource) => {
+    const commonClasses = "w-full sm:w-auto bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center justify-center gap-2";
+    const linkProps = { href: resource.url, target: "_blank", rel: "noopener noreferrer", className: commonClasses };
+
     switch(resource.action) {
       case 'Download':
-        return <><DownloadIcon className="w-4 h-4" /> {resource.action}</>;
+        return <a {...linkProps} download><DownloadIcon className="w-4 h-4" /> {resource.action}</a>;
       case 'Assistir':
       case 'Ouvir':
-        return <><PlayIcon className="w-4 h-4" /> {resource.action}</>;
+        return <a {...linkProps}><PlayIcon className="w-4 h-4" /> {resource.action}</a>;
       case 'Ver':
-         return <a href={resource.url} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center justify-center gap-2"><ImageIcon className="w-4 h-4" /> {resource.action}</a>;
+         return <a {...linkProps}><ImageIcon className="w-4 h-4" /> {resource.action}</a>;
       case 'Acessar':
-         return <a href={resource.url} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center justify-center gap-2"><LinkIcon className="w-4 h-4" /> {resource.action}</a>;
+         return <a {...linkProps}><LinkIcon className="w-4 h-4" /> {resource.action}</a>;
       default:
-        return <a href={resource.url} download target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto bg-brand-gray-900 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center justify-center gap-2"><DownloadIcon className="w-4 h-4" /> Download</a>;
+        return <a {...linkProps} download><DownloadIcon className="w-4 h-4" /> Download</a>;
     }
   }
 
@@ -92,7 +126,9 @@ const Resources: React.FC<ResourcesProps> = ({ initialResources, currentUserRole
           </select>
         </div>
       </div>
-
+      {loading ? (
+        <div className="text-center py-10">Carregando recursos...</div>
+        ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {filteredResources.length > 0 ? (
           filteredResources.map((resource) => (
@@ -116,6 +152,7 @@ const Resources: React.FC<ResourcesProps> = ({ initialResources, currentUserRole
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

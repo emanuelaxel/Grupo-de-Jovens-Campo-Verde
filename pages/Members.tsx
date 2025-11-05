@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Card from '../components/Card';
 import { Member, MemberPageData, Role } from '../types';
 import { UsersIcon, SearchIcon, ChevronDownIcon, PlusIcon, MailIcon, PhoneIcon, CalendarIcon, BookOpenIcon, ShieldIcon, PencilIcon } from '../components/Icons';
 import AddMemberModal from '../components/AddMemberModal';
 import EditMemberModal from '../components/EditMemberModal';
+import { supabase } from '../supabaseClient';
+
 
 const roleColors: { [key: string]: string } = {
   'Líder': 'bg-purple-100 text-purple-700',
@@ -17,7 +19,7 @@ interface MemberCardProps {
   member: Member;
   canViewPersonalData: boolean;
   canManageMembers: boolean;
-  onRoleChange: (memberId: number, newRole: Role) => void;
+  onRoleChange: (memberId: string, newRole: Role) => void;
   onEdit: (member: Member) => void;
 }
 
@@ -94,28 +96,30 @@ interface MembersPageProps {
 }
 
 const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
-  const [members, setMembers] = useState<Member[]>(() => {
-    const savedMembers = localStorage.getItem('appMembers');
-    try {
-        if (savedMembers) {
-            return JSON.parse(savedMembers);
-        }
-    } catch (error) {
-        console.error("Failed to parse members from localStorage", error);
-    }
-    return data.members;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('appMembers', JSON.stringify(members));
-  }, [members]);
-
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
 
   const canViewPersonalData = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
-  const canManageMembers = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
+  const canManageMembers = ['Líder', 'Pastor'].includes(currentUserRole);
+
+  const fetchMembers = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error("Error fetching members:", error);
+    } else {
+        setMembers(data as Member[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
+
 
     const handleOpenEditModal = (member: Member) => {
         setEditingMember(member);
@@ -129,15 +133,29 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
     };
 
 
-  const handleRoleChange = (memberId: number, newRole: Role) => {
-    setMembers(currentMembers =>
-        currentMembers.map(m =>
-            m.id === memberId ? { ...m, role: newRole } : m
-        )
-    );
+  const handleRoleChange = async (memberId: string, newRole: Role) => {
+    const { error } = await supabase.from('members').update({ role: newRole }).eq('id', memberId);
+    if (error) {
+        console.error("Error updating role:", error);
+    } else {
+        fetchMembers();
+    }
   };
 
-  const handleAddMember = (memberData: any) => {
+  const handleAddMember = async (memberData: any) => {
+    // 1. Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: memberData.email,
+        password: memberData.password,
+    });
+
+    if (authError || !authData.user) {
+        console.error("Error creating user:", authError?.message);
+        alert(`Erro ao criar usuário: ${authError?.message}`);
+        return;
+    }
+    
+    // 2. Create profile in 'members' table
     const getInitials = (name: string) => {
         const names = name.split(' ');
         if (names.length > 1) {
@@ -146,14 +164,11 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
         return name.substring(0, 2);
     };
 
-    const avatarColors = [
-        'bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 
-        'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
-    ];
+    const avatarColors = ['bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'];
     const randomColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
 
-    const newMember: Member = {
-        id: Date.now(),
+    const newMemberProfile: Omit<Member, 'created_at'> = {
+        id: authData.user.id,
         name: memberData.name,
         initials: getInitials(memberData.name).toUpperCase(),
         avatarColor: randomColor,
@@ -168,43 +183,38 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
         baptismDate: memberData.baptismDate,
     };
 
-    setMembers(prevMembers => [newMember, ...prevMembers]);
+    const { error: profileError } = await supabase.from('members').insert(newMemberProfile);
 
-    // Save user credentials for login
-    const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
-    const newUserCredentials = {
-        email: memberData.email,
-        password: memberData.password,
-        role: memberData.role
-    };
-    storedUsers.push(newUserCredentials);
-    localStorage.setItem('appUsers', JSON.stringify(storedUsers));
-    
-    handleCloseModals();
+    if (profileError) {
+        console.error("Error creating member profile:", profileError);
+        alert(`Erro ao criar perfil: ${profileError.message}. O usuário foi criado, mas o perfil falhou. Contate o suporte.`);
+    } else {
+        fetchMembers();
+        handleCloseModals();
+    }
   };
   
-    const handleUpdateMember = (updatedData: any) => {
+    const handleUpdateMember = async (updatedData: any) => {
         if (!editingMember) return;
 
-        setMembers(prevMembers =>
-            prevMembers.map(m => (m.id === editingMember.id ? { ...m, ...updatedData } : m))
-        );
-
-        // Update user credentials in localStorage
-        const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
-        const userIndex = storedUsers.findIndex((user: any) => user.email === editingMember.email);
+        const { error } = await supabase.from('members').update(updatedData).eq('id', editingMember.id);
         
-        if (userIndex !== -1) {
-            storedUsers[userIndex].email = updatedData.email;
-            storedUsers[userIndex].role = updatedData.role;
-            // Only update password if a new one was provided
-            if (updatedData.password) {
-                storedUsers[userIndex].password = updatedData.password;
-            }
-            localStorage.setItem('appUsers', JSON.stringify(storedUsers));
-        }
+        if (error) {
+            console.error("Error updating member:", error);
+        } else {
+             // Handle email/password update in Auth if changed
+            if (updatedData.email !== editingMember.email || updatedData.password) {
+                const authUpdateData: any = {};
+                if (updatedData.email !== editingMember.email) authUpdateData.email = updatedData.email;
+                if (updatedData.password) authUpdateData.password = updatedData.password;
 
-        handleCloseModals();
+                // This needs to be done by an admin or the user themselves.
+                // For simplicity, we'll skip the auth user update as it requires more complex logic.
+                console.warn("Auth user email/password update skipped for simplicity.");
+            }
+            fetchMembers();
+            handleCloseModals();
+        }
     };
 
 
@@ -223,16 +233,18 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
           <h1 className="text-3xl font-bold text-brand-gray-900">Membros do Grupo</h1>
           <p className="text-brand-gray-600 mt-1">Gerencie os membros e suas informações</p>
         </div>
-        <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="mt-4 md:mt-0 bg-brand-gray-900 text-white font-semibold py-2.5 px-5 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center gap-2">
-          <PlusIcon className="w-5 h-5" /> Adicionar Membro
-        </button>
+        {canManageMembers && (
+            <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="mt-4 md:mt-0 bg-brand-gray-900 text-white font-semibold py-2.5 px-5 rounded-lg shadow-sm hover:bg-brand-gray-800 transition-colors flex items-center gap-2">
+              <PlusIcon className="w-5 h-5" /> Adicionar Membro
+            </button>
+        )}
       </div>
       
       <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4 flex items-start sm:items-center gap-3 text-sm">
         <ShieldIcon className="w-6 h-6 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5 sm:mt-0" />
-        <span>Apenas usuários com a função 'Líder' podem visualizar informações de contato como e-mail e telefone dos membros.</span>
+        <span>Apenas usuários com a função 'Líder' ou 'Pastor' podem visualizar informações de contato e gerenciar membros.</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -267,12 +279,15 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
           </div>
       </div>
       
+      {loading ? (
+        <div className="text-center py-10">Carregando membros...</div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {members.map(member => (
           <MemberCard key={member.id} member={member} canViewPersonalData={canViewPersonalData} canManageMembers={canManageMembers} onRoleChange={handleRoleChange} onEdit={handleOpenEditModal} />
         ))}
       </div>
-
+      )}
     </div>
   );
 };

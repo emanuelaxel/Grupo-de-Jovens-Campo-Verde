@@ -1,24 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Card from '../components/Card';
 import { Event, Role } from '../types';
 import { ClockIcon, LocationMarkerIcon, UsersIcon, CheckIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import EventModal from '../components/EventModal';
 import EventDetailsModal from '../components/EventDetailsModal';
+import { supabase } from '../supabaseClient';
 
 interface EventsProps {
-  initialEvents: Event[];
   currentUserRole: Role;
 }
 
-const Events: React.FC<EventsProps> = ({ initialEvents, currentUserRole }) => {
-  const [events, setEvents] = useState(initialEvents);
+const Events: React.FC<EventsProps> = ({ currentUserRole }) => {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
   const [confirmedEvents, setConfirmedEvents] = useState<Set<number>>(new Set());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   const canManageEvents = ['Líder', 'Pastor', 'Regente', 'Tesoureiro'].includes(currentUserRole);
   
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('events').select('*').order('date', { ascending: false });
+    if (error) {
+      console.error('Error fetching events:', error);
+    } else {
+      setEvents(data as Event[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+
   const handleToggleConfirmation = (eventId: number) => {
+    // This is a client-side only simulation for now.
+    // In a real app, this would involve a `event_confirmations` table.
     const newConfirmedSet = new Set(confirmedEvents);
     let newEvents = [...events];
     const eventIndex = newEvents.findIndex(e => e.id === eventId);
@@ -36,20 +55,25 @@ const Events: React.FC<EventsProps> = ({ initialEvents, currentUserRole }) => {
     setEvents(newEvents);
   };
   
-  const handleAddEvent = (newEventData: Omit<Event, 'id' | 'day' | 'month' | 'categoryColor' | 'confirmedAttendees'>) => {
+  const handleAddEvent = async (newEventData: Omit<Event, 'id' | 'day' | 'month' | 'categoryColor' | 'confirmedAttendees'>) => {
       const date = new Date(`${newEventData.date}T00:00:00`);
       const day = date.toLocaleDateString('pt-BR', { day: '2-digit' });
       const month = date.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
 
-      const newEvent: Event = {
+      const eventToInsert = {
           ...newEventData,
-          id: Date.now(),
           day,
           month,
           categoryColor: 'bg-yellow-200 text-yellow-800', // Default color for new events
           confirmedAttendees: 0,
       };
-      setEvents(prevEvents => [newEvent, ...prevEvents]);
+
+      const { error } = await supabase.from('events').insert(eventToInsert);
+      if (error) {
+          console.error('Error adding event:', error);
+      } else {
+          fetchEvents();
+      }
       setIsCreateModalOpen(false);
   };
 
@@ -61,9 +85,15 @@ const Events: React.FC<EventsProps> = ({ initialEvents, currentUserRole }) => {
     setSelectedEvent(null);
   };
 
-  const handleDeleteEvent = (eventId: number) => {
+  const handleDeleteEvent = async (eventId: number | undefined) => {
+    if (!eventId) return;
     if (window.confirm('Tem certeza que deseja excluir este evento? Esta ação não pode ser desfeita.')) {
-        setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+        const { error } = await supabase.from('events').delete().eq('id', eventId);
+        if (error) {
+            console.error('Error deleting event:', error);
+        } else {
+            fetchEvents();
+        }
     }
   };
 
@@ -100,9 +130,12 @@ const Events: React.FC<EventsProps> = ({ initialEvents, currentUserRole }) => {
           </div>
       </div>
       
+       {loading ? (
+        <div className="text-center py-10">Carregando eventos...</div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {events.map((event) => {
-          const isConfirmed = confirmedEvents.has(event.id);
+          const isConfirmed = confirmedEvents.has(event.id!);
           return (
             <Card key={event.id} className="p-0 flex flex-col overflow-hidden relative">
                 {canManageEvents && (
@@ -144,7 +177,7 @@ const Events: React.FC<EventsProps> = ({ initialEvents, currentUserRole }) => {
                   Detalhes
                 </button>
                 <button 
-                  onClick={() => handleToggleConfirmation(event.id)}
+                  onClick={() => handleToggleConfirmation(event.id!)}
                   className={`flex-1 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 ${
                     isConfirmed 
                       ? 'bg-green-500 text-white hover:bg-green-600' 
@@ -159,6 +192,7 @@ const Events: React.FC<EventsProps> = ({ initialEvents, currentUserRole }) => {
           );
         })}
       </div>
+      )}
     </div>
   );
 };

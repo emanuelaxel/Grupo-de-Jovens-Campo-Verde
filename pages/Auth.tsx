@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { LogoIcon } from '../components/Icons';
+import { supabase } from '../supabaseClient';
 
-interface AuthProps {
-  onLoginSuccess: (email: string) => void;
-}
 
-const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
+const Auth: React.FC = () => {
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgotPassword'>('login');
   
   // State for login
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loading, setLoading] = useState(false);
   
   // State for registration
   const [registerName, setRegisterName] = useState('');
@@ -23,35 +22,47 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
   const [registerBaptismDate, setRegisterBaptismDate] = useState('');
   const [registerSuccess, setRegisterSuccess] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setLoginError('');
 
-    // Check hardcoded users first
-    if ((loginEmail === 'lider@email.com' && loginPassword === '123456') || (loginEmail === 'emanoelaxl@hotmail.com' && loginPassword === 'axel12345@')) {
-      setLoginError('');
-      onLoginSuccess(loginEmail);
-      return;
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+    });
 
-    // Check users from localStorage
-    const storedUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
-    const foundUser = storedUsers.find(
-      (user: any) => user.email === loginEmail && user.password === loginPassword
-    );
-
-    if (foundUser) {
-        setLoginError('');
-        onLoginSuccess(loginEmail);
-    } else {
+    if (error) {
         setLoginError('E-mail ou senha inválidos.');
     }
+    // onAuthStateChange in App.tsx will handle success
+    setLoading(false);
   };
   
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
       e.preventDefault();
-      // In a real app, you would send this data to a server.
-      // For this demo, we'll just show a success message.
-      setRegisterSuccess(true);
+      setLoading(true);
+      const { error } = await supabase
+        .from('access_requests')
+        .insert({ 
+            name: registerName, 
+            email: registerEmail, 
+            // Storing other details as metadata
+            details: {
+                dob: registerDob,
+                phone: registerPhone,
+                address: registerAddress,
+                baptismDate: registerBaptismDate
+            }
+        });
+
+      if (error) {
+        alert("Ocorreu um erro ao enviar seu cadastro. Tente novamente.");
+        console.error(error);
+      } else {
+        setRegisterSuccess(true);
+      }
+      setLoading(false);
   }
 
   const renderContent = () => {
@@ -60,7 +71,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
         <>
             <div className="flex flex-col items-center">
               <h2 className="text-2xl font-bold text-center text-brand-gray-900">Criar Nova Conta</h2>
-              <p className="mt-2 text-sm text-center text-brand-gray-500">Preencha os campos para se registrar</p>
+              <p className="mt-2 text-sm text-center text-brand-gray-500">Preencha os campos para solicitar seu acesso</p>
             </div>
             {registerSuccess ? (
                 <div className="text-center p-4 bg-green-100 text-green-800 rounded-lg">
@@ -72,7 +83,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <input placeholder="Nome completo" required className="input-field" type="text" value={registerName} onChange={e => setRegisterName(e.target.value)} />
                          <input placeholder="E-mail" required className="input-field" type="email" value={registerEmail} onChange={e => setRegisterEmail(e.target.value)} />
-                         <input placeholder="Senha" required className="input-field" type="password" value={registerPassword} onChange={e => setRegisterPassword(e.target.value)} />
+                         <input placeholder="Crie uma senha" required className="input-field" type="password" value={registerPassword} onChange={e => setRegisterPassword(e.target.value)} />
                          <input placeholder="Data de Nascimento" required className="input-field" type="text" onFocus={(e) => e.target.type='date'} onBlur={(e) => e.target.type='text'} value={registerDob} onChange={e => setRegisterDob(e.target.value)} />
                          <input placeholder="Telefone" required className="input-field" type="tel" value={registerPhone} onChange={e => setRegisterPhone(e.target.value)} />
                          <input placeholder="Endereço" required className="input-field" type="text" value={registerAddress} onChange={e => setRegisterAddress(e.target.value)} />
@@ -80,8 +91,8 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                     </div>
                    
                     <div>
-                        <button type="submit" className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-brand-purple hover:bg-brand-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple">
-                            Cadastrar
+                        <button type="submit" disabled={loading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-brand-purple hover:bg-brand-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple disabled:bg-brand-purple/50">
+                            {loading ? 'Enviando...' : 'Solicitar Cadastro'}
                         </button>
                     </div>
                 </form>
@@ -162,8 +173,8 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
           </div>
 
           <div>
-            <button type="submit" className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-brand-purple hover:bg-brand-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple">
-              Entrar
+            <button type="submit" disabled={loading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-brand-purple hover:bg-brand-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple disabled:bg-brand-purple/50">
+              {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </div>
         </form>
