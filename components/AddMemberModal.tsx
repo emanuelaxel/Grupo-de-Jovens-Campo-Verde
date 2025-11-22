@@ -9,6 +9,7 @@ interface AddMemberModalProps {
 const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onSave }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [role, setRole] = useState<Role>('Membro');
     const [dob, setDob] = useState('');
     const [phone, setPhone] = useState('');
@@ -18,7 +19,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onSave }) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave({
-            name, email, role, dob, phone, address, baptismDate
+            name, email, password, role, dob, phone, address, baptismDate
         });
     };
 
@@ -33,7 +34,9 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onSave }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input placeholder="Nome completo" required className="input-field" type="text" value={name} onChange={e => setName(e.target.value)} />
                         <input placeholder="E-mail" required className="input-field" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-                        <select value={role} onChange={e => setRole(e.target.value as Role)} required className="input-field md:col-span-2">
+                        
+                        <input placeholder="Senha" required className="input-field" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+                        <select value={role} onChange={e => setRole(e.target.value as Role)} required className="input-field">
                             <option value="Membro">Membro</option>
                             <option value="Líder">Líder</option>
                             <option value="Pastor">Pastor</option>

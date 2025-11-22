@@ -90,12 +90,12 @@ const MemberCard: React.FC<MemberCardProps> = ({ member, canViewPersonalData, ca
 );
 
 interface MembersPageProps {
-  data: MemberPageData;
+  initialData: MemberPageData;
+  setMembers: (members: Member[]) => void;
   currentUserRole: Role;
 }
 
-const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
-  const [members, setMembers] = useState<Member[]>(data.members);
+const Members: React.FC<MembersPageProps> = ({ initialData, setMembers, currentUserRole }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -116,10 +116,11 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
 
 
   const handleRoleChange = (memberId: number, newRole: Role) => {
-    setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m));
+    const updatedMembers = initialData.members.map(m => m.id === memberId ? { ...m, role: newRole } : m);
+    setMembers(updatedMembers);
   };
 
-  const handleAddMember = (memberData: Omit<Member, 'id' | 'initials' | 'avatarColor' | 'joinDate' | 'eventsAttended' | 'studiesCompleted'>) => {
+  const handleAddMember = (memberData: any) => {
     const getInitials = (name: string) => {
         const names = name.split(' ');
         if (names.length > 1) {
@@ -133,20 +134,40 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
 
     const newMember: Member = {
         id: Date.now(),
-        ...memberData,
+        name: memberData.name,
+        email: memberData.email,
+        password: memberData.password,
+        role: memberData.role,
+        dob: memberData.dob,
+        phone: memberData.phone,
+        address: memberData.address,
+        baptismDate: memberData.baptismDate,
         initials: getInitials(memberData.name).toUpperCase(),
         avatarColor: randomColor,
         joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
         eventsAttended: 0,
         studiesCompleted: 0,
     };
-    setMembers(prev => [newMember, ...prev]);
+    setMembers([newMember, ...initialData.members]);
     handleCloseModals();
   };
   
     const handleUpdateMember = (updatedData: any) => {
         if (!editingMember) return;
-        setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...updatedData } : m));
+        
+        const updatedMembers = initialData.members.map(m => {
+            if (m.id === editingMember.id) {
+                const newMemberData = { ...m, ...updatedData };
+                // Only update password if a new one was provided
+                if (updatedData.password) {
+                    newMemberData.password = updatedData.password;
+                }
+                return newMemberData;
+            }
+            return m;
+        });
+
+        setMembers(updatedMembers);
         handleCloseModals();
     };
 
@@ -181,7 +202,7 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data.stats.map((stat, index) => (
+        {initialData.stats.map((stat, index) => (
           <Card key={index} className="flex items-center p-5">
             <div className={`p-4 rounded-lg mr-4 ${stat.iconBgColor}`}>
                 <span className={stat.iconTextColor}>{stat.icon}</span>
@@ -213,7 +234,7 @@ const Members: React.FC<MembersPageProps> = ({ data, currentUserRole }) => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {members.map(member => (
+        {initialData.members.map(member => (
           <MemberCard key={member.id} member={member} canViewPersonalData={canViewPersonalData} canManageMembers={canManageMembers} onRoleChange={handleRoleChange} onEdit={handleOpenEditModal} />
         ))}
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -9,6 +9,7 @@ import Resources from './pages/Resources';
 import Finances from './pages/Finances';
 import Permissions from './pages/Permissions';
 import Polls from './pages/Polls';
+import Auth from './pages/Auth';
 import AccessDenied from './components/AccessDenied';
 import { appData } from './data';
 import { Page, Role, Member } from './types';
@@ -16,22 +17,56 @@ import { Page, Role, Member } from './types';
 const pagePermissions: { [key in Page]?: Role[] } = {
     'Finanças': ['Líder', 'Pastor', 'Tesoureiro'],
     'Permissões': ['Líder', 'Pastor', 'Regente', 'Tesoureiro'],
-    'Membros': ['Líder', 'Pastor', 'Regente', 'Tesoureiro'],
+    'Membros': ['Líder', 'Pastor'],
 };
-
-// Perfil de usuário estático para demonstração, já que a autenticação foi removida.
-const DEMO_USER_ROLE: Role = 'Líder';
-const currentUserProfile = appData.membersPage.members.find(m => m.role === DEMO_USER_ROLE) || appData.membersPage.members[0];
-
 
 const App: React.FC = () => {
     const [page, setPage] = useState<Page>('Dashboard');
+    const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+    const [members, setMembers] = useState<Member[]>([]);
 
-    // Função de logout simulada, pois não há sessão real.
-    const handleLogout = () => {
-        alert("A funcionalidade de logout foi desativada, pois não há um usuário logado.");
+    useEffect(() => {
+        // Initialize members from localStorage or data.tsx
+        try {
+            const storedMembers = localStorage.getItem('app_members');
+            if (storedMembers) {
+                setMembers(JSON.parse(storedMembers));
+            } else {
+                localStorage.setItem('app_members', JSON.stringify(appData.membersPage.members));
+                setMembers(appData.membersPage.members);
+            }
+        } catch (error) {
+            console.error("Failed to load members:", error);
+            setMembers(appData.membersPage.members);
+        }
+        
+        // Check for active session
+        const activeSessionEmail = sessionStorage.getItem('app_session_email');
+        if (activeSessionEmail) {
+            setSessionEmail(activeSessionEmail);
+        }
+    }, []);
+
+    const updateMembers = (newMembers: Member[]) => {
+        setMembers(newMembers);
+        localStorage.setItem('app_members', JSON.stringify(newMembers));
+    };
+    
+    const handleLogin = (email: string) => {
+        setSessionEmail(email);
+        sessionStorage.setItem('app_session_email', email);
     };
 
+    const handleLogout = () => {
+        setSessionEmail(null);
+        sessionStorage.removeItem('app_session_email');
+        setPage('Dashboard');
+    };
+
+    const currentUserProfile: Member | undefined = useMemo(() => {
+        return members.find(m => m.email === sessionEmail);
+    }, [sessionEmail, members]);
+    
     const currentUserRole = currentUserProfile?.role || 'Membro';
 
     const hasAccess = useMemo(() => {
@@ -55,7 +90,8 @@ const App: React.FC = () => {
             case 'Estudos':
                 return <Studies currentUserRole={currentUserRole} />;
             case 'Membros':
-                return <Members data={appData.membersPage} currentUserRole={currentUserRole} />;
+                // Pass current members and the update function
+                return <Members initialData={{ ...appData.membersPage, members }} setMembers={updateMembers} currentUserRole={currentUserRole} />;
             case 'Recursos':
                 return <Resources currentUserRole={currentUserRole} />;
             case 'Finanças':
@@ -69,6 +105,10 @@ const App: React.FC = () => {
         }
     };
     
+    if (!sessionEmail || !currentUserProfile) {
+        return <Auth onLogin={handleLogin} allMembers={members} />;
+    }
+
     return (
         <div className="flex h-screen bg-brand-gray-100 font-sans">
             <Sidebar currentPage={page} setPage={setPage} onLogout={handleLogout} />

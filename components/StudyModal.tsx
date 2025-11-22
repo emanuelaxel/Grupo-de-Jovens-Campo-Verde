@@ -106,22 +106,24 @@ const StudyModal: React.FC<StudyModalProps> = ({ onClose, onSave, study }) => {
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="sm:col-span-2">
-                            <label className="label">Título do Estudo</label>
-                            <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="input-field" />
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label className="label">Descrição</label>
-                            <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={2} className="input-field"></textarea>
-                        </div>
                         <div>
                             <label className="label">Tema</label>
-                            <input type="text" value={theme} onChange={e => setTheme(e.target.value)} required className="input-field" />
+                            <input type="text" value={theme} onChange={e => setTheme(e.target.value)} required className="input-field" placeholder="Ex: Fé, Esperança..." />
                         </div>
                         <div>
                             <label className="label">Referência Bíblica</label>
-                            <input type="text" value={scripture} onChange={e => setScripture(e.target.value)} required className="input-field" />
+                            <input type="text" value={scripture} onChange={e => setScripture(e.target.value)} required className="input-field" placeholder="Ex: Hebreus 11" />
                         </div>
+                        
+                        <div className="sm:col-span-2">
+                            <label className="label">Título do Estudo</label>
+                            <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="input-field" placeholder="Título do estudo" />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <label className="label">Descrição</label>
+                            <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={2} className="input-field" placeholder="Breve descrição do estudo"></textarea>
+                        </div>
+
                         <div>
                             <label className="label">Líder do Estudo</label>
                             <input type="text" value={leader} onChange={e => setLeader(e.target.value)} required className="input-field" />

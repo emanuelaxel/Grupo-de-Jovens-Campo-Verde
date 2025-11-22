@@ -69,6 +69,7 @@ export interface Member {
     avatarColor: string;
     role: Role;
     email: string;
+    password?: string;
     phone: string;
     joinDate: string;
     eventsAttended: number;
