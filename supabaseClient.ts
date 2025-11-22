@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Provide fallback values for the environment variables to prevent crashes.
-// In a real production environment, these should be set securely.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://your-project-id.supabase.co"
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "your-anon-key"
+// Use import.meta.env for Vite compatibility instead of process.env
+// Fallback values provided for demo purposes/prevention of immediate crash
+const env = (import.meta as any).env;
 
-if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-id')) {
-  const errorMsg = "Supabase environment variables not set. Please provide NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
-  console.error(errorMsg);
-  // We don't throw an error anymore to allow the app to load, 
-  // but functionality will be limited.
-  // throw new Error(errorMsg);
+const supabaseUrl = env?.VITE_SUPABASE_URL || "https://your-project-id.supabase.co"
+const supabaseAnonKey = env?.VITE_SUPABASE_ANON_KEY || "your-anon-key"
+
+if (!env?.VITE_SUPABASE_URL || !env?.VITE_SUPABASE_ANON_KEY) {
+  console.warn("Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) not set.");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
